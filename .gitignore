@@ -1,0 +1,5 @@
+build/ipxe/ipxe
+
+build/bin/*
+build/manifests/**
+build/vendor/**
