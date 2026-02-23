@@ -1,0 +1,96 @@
+================================================================================
+  PROXMOX CLUSTER CAPACITY REPORT
+  Generated: {{ ansible_date_time.iso8601 | default(lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')) }}
+  Target VM spec: {{ target_vcpu }} vCPU / {{ target_ram_gb }} GB RAM / {{ target_disk_gb }} GB disk
+================================================================================
+
+{% for node in groups['proxmox'] %}
+{% set ns = hostvars[node] %}
+{% set status = ns.node_status %}
+{% set qemu_list = ns.node_qemu %}
+{% set lxc_list = ns.node_lxc %}
+{% set storage_list = ns.node_storage %}
+{% set qemu_vcpus = qemu_list | map(attribute='cpus') | map('int') | sum %}
+{% set lxc_vcpus = lxc_list | map(attribute='cpus') | map('int') | sum %}
+{% set allocated_vcpus = qemu_vcpus + lxc_vcpus %}
+{% set ram_free_gb = (status.memory.free / 1073741824) | round(1) %}
+{% set ram_total_gb = (status.memory.total / 1073741824) | round(1) %}
+{% set ram_used_gb = (status.memory.used / 1073741824) | round(1) %}
+{% set load_avg = status.loadavg | join(', ') %}
+{% set vm_pools = storage_list | selectattr('content', 'search', 'images') | list %}
+
+--------------------------------------------------------------------------------
+NODE: {{ node }} ({{ ns.ansible_host }})
+--------------------------------------------------------------------------------
+
+  CPU & RAM
+  ---------
+  Max CPUs (physical):  {{ status.cpuinfo.cpus }}
+  Allocated vCPUs:      {{ allocated_vcpus }} ({{ qemu_vcpus }} qemu + {{ lxc_vcpus }} lxc)
+  Free vCPUs (est.):    {{ [status.cpuinfo.cpus - allocated_vcpus, 0] | max }}
+  RAM Total:            {{ ram_total_gb }} GB
+  RAM Used:             {{ ram_used_gb }} GB
+  RAM Free:             {{ ram_free_gb }} GB
+  Load Average:         {{ load_avg }}
+
+  VM INVENTORY
+  ------------
+{% if qemu_list | length == 0 and lxc_list | length == 0 %}
+  (no VMs or containers)
+{% else %}
+  %-8s %-30s %6s %8s  %s
+  {{ '%-8s' | format('VMID') }} {{ '%-30s' | format('Name') }} {{ '%6s' | format('vCPU') }} {{ '%8s' | format('RAM(MB)') }}  Status
+  -------- ------------------------------ ------ --------  --------
+{% for vm in qemu_list %}
+  {{ '%-8s' | format(vm.vmid) }} {{ '%-30s' | format(vm.name | default('(unnamed)')) }} {{ '%6s' | format(vm.cpus) }} {{ '%8s' | format((vm.maxmem / 1048576) | int) }}  {{ vm.status }} [qemu]
+{% endfor %}
+{% for ct in lxc_list %}
+  {{ '%-8s' | format(ct.vmid) }} {{ '%-30s' | format(ct.name | default('(unnamed)')) }} {{ '%6s' | format(ct.cpus) }} {{ '%8s' | format((ct.maxmem / 1048576) | int) }}  {{ ct.status }} [lxc]
+{% endfor %}
+{% endif %}
+
+  STORAGE POOLS
+  -------------
+  %-20s %-10s %10s %10s %6s  %s
+  {{ '%-20s' | format('Pool') }} {{ '%-10s' | format('Type') }} {{ '%10s' | format('Free(GB)') }} {{ '%10s' | format('Total(GB)') }} {{ '%6s' | format('Used%') }}  VM-Capable
+  -------------------- ---------- ---------- ---------- ------  ----------
+{% for pool in storage_list %}
+{% set free_gb = (pool.avail / 1073741824) | round(1) %}
+{% set total_gb = (pool.total / 1073741824) | round(1) %}
+{% set used_pct = ((1 - pool.avail / pool.total) * 100) | round(1) if pool.total > 0 else 0 %}
+{% set vm_capable = 'yes' if 'images' in (pool.content | default('')) else 'no' %}
+  {{ '%-20s' | format(pool.storage) }} {{ '%-10s' | format(pool.type) }} {{ '%10s' | format(free_gb) }} {{ '%10s' | format(total_gb) }} {{ '%6s' | format(used_pct) }}  {{ vm_capable }}
+{% endfor %}
+
+  HEADROOM ANALYSIS
+  -----------------
+{% set has_ram = ram_free_gb >= target_ram_gb %}
+{% set target_disk_bytes = target_disk_gb * 1073741824 %}
+{% set best_pool = vm_pools | sort(attribute='avail') | last if vm_pools | length > 0 else none %}
+{% set has_disk = (best_pool is not none) and (best_pool.avail >= target_disk_bytes) %}
+  RAM check:    {{ ram_free_gb }} GB free >= {{ target_ram_gb }} GB target → {{ 'PASS' if has_ram else 'FAIL' }}
+  Disk check:   {% if best_pool is not none %}{{ (best_pool.avail / 1073741824) | round(1) }} GB free in '{{ best_pool.storage }}' >= {{ target_disk_gb }} GB target → {{ 'PASS' if has_disk else 'FAIL' }}{% else %}no VM-capable storage pool found → FAIL{% endif %}
+
+  VERDICT:      {% if has_ram and has_disk %}VIABLE — can accommodate a new {{ target_vcpu }}vCPU / {{ target_ram_gb }}GB VM{% else %}NOT VIABLE —{% if not has_ram %} insufficient RAM ({{ ram_free_gb }} GB free){% endif %}{% if not has_ram and not has_disk %};{% endif %}{% if not has_disk %} insufficient disk{% endif %}{% endif %}
+
+{% endfor %}
+================================================================================
+  SUMMARY
+================================================================================
+
+  Node            RAM Free   Disk Available   Verdict
+  --------------- ---------- ---------------- --------
+{% for node in groups['proxmox'] %}
+{% set ns = hostvars[node] %}
+{% set status = ns.node_status %}
+{% set storage_list = ns.node_storage %}
+{% set ram_free_gb = (status.memory.free / 1073741824) | round(1) %}
+{% set vm_pools = storage_list | selectattr('content', 'search', 'images') | list %}
+{% set best_pool = vm_pools | sort(attribute='avail') | last if vm_pools | length > 0 else none %}
+{% set has_ram = ram_free_gb >= target_ram_gb %}
+{% set target_disk_bytes = target_disk_gb * 1073741824 %}
+{% set has_disk = (best_pool is not none) and (best_pool.avail >= target_disk_bytes) %}
+  {{ '%-15s' | format(node) }} {{ '%10s' | format(ram_free_gb ~ ' GB') }} {{ '%16s' | format((best_pool.avail / 1073741824) | round(1) ~ ' GB (' ~ best_pool.storage ~ ')' if best_pool is not none else 'none') }}  {{ 'VIABLE' if has_ram and has_disk else 'NOT VIABLE' }}
+{% endfor %}
+
+================================================================================
