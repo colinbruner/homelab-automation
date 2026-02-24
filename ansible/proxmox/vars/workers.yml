@@ -1,0 +1,23 @@
+---
+# Global defaults — override per-VM or via --extra-vars
+vm_vcpus: 2
+vm_ram_mb: 4096
+vm_disk_gb: 100
+vm_bridge: vmbr0
+vm_storage: ""   # empty = auto-select largest images-capable pool on target node
+
+workers:
+  - name: worker-07
+    node: proxmox-2
+
+  - name: worker-08
+    node: proxmox-2
+
+  # Example: per-VM overrides
+  # - name: talos-worker-03
+  #   node: proxmox-3
+  #   ram_mb: 8192
+  #   disk_gb: 100
+  #   vcpus: 8
+  #   storage: local-lvm
+  #   bridge: vmbr0

@@ -1,0 +1,125 @@
+---
+- name: gather proxmox node capacity facts
+  hosts: proxmox
+  gather_facts: false
+  vars_files:
+    - vars/workers.yml
+
+  tasks:
+    - name: get node status
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/status --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_status_raw
+      changed_when: false
+      failed_when: _node_status_raw.rc != 0 or _node_status_raw.stdout | length == 0
+
+    - name: get node storage
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/storage --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_storage_raw
+      changed_when: false
+      failed_when: _node_storage_raw.rc != 0 or _node_storage_raw.stdout | length == 0
+
+    - name: set node facts
+      ansible.builtin.set_fact:
+        node_status: "{{ _node_status_raw.stdout | from_json }}"
+        node_storage: "{{ _node_storage_raw.stdout | from_json }}"
+
+- name: validate config and register target nodes
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vars/workers.yml
+  vars:
+    vm_vcpus: 4
+    vm_ram_mb: 4096
+    vm_disk_gb: 50
+    vm_bridge: vmbr0
+    vm_storage: ""
+
+  tasks:
+    - name: validate node references
+      ansible.builtin.fail:
+        msg: >-
+          Worker '{{ item.name }}' references node '{{ item.node }}' which is not in
+          the [proxmox] inventory group. Valid nodes: {{ groups['proxmox'] | join(', ') }}
+      loop: "{{ workers }}"
+      when: item.node not in groups['proxmox']
+
+    - name: register unique target nodes into dynamic group
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: vm_target
+        node_workers: "{{ workers | selectattr('node', 'equalto', item) | list }}"
+      loop: "{{ workers | map(attribute='node') | unique | list }}"
+      changed_when: false
+
+    - name: show placement summary
+      ansible.builtin.debug:
+        msg: "{{ item.name }} → {{ item.node }}"
+      loop: "{{ workers }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: create talos worker VMs
+  hosts: vm_target
+  gather_facts: false
+  vars_files:
+    - vars/workers.yml
+  vars:
+    vm_vcpus: 4
+    vm_ram_mb: 4096
+    vm_disk_gb: 50
+    vm_bridge: vmbr0
+    vm_storage: ""
+
+  tasks:
+    - name: fail if no VM-capable storage pool found
+      ansible.builtin.fail:
+        msg: >-
+          No storage pool with 'images' content found on {{ inventory_hostname }}.
+          Available pools: {{ node_storage | map(attribute='storage') | list | join(', ') }}
+      when:
+        - vm_storage == ''
+        - node_storage | selectattr('content', 'search', 'images') | list | length == 0
+
+    - name: select default storage pool
+      ansible.builtin.set_fact:
+        _default_storage: >-
+          {{ vm_storage if vm_storage != ''
+             else (node_storage
+                   | selectattr('content', 'search', 'images')
+                   | sort(attribute='avail')
+                   | last).storage }}
+
+    - name: create and start assigned VMs
+      ansible.builtin.shell: |
+        VMID=$(pvesh get /cluster/nextid)
+        STORAGE="{{ item.storage if 'storage' in item and item.storage != '' else _default_storage }}"
+        qm create "$VMID" \
+          --name "{{ item.name }}" \
+          --memory {{ item.ram_mb | default(vm_ram_mb) }} \
+          --cores {{ item.vcpus | default(vm_vcpus) }} \
+          --sockets 1 \
+          --cpu x86-64-v2-AES \
+          --scsihw virtio-scsi-pci \
+          --scsi0 "${STORAGE}:{{ item.disk_gb | default(vm_disk_gb) }}" \
+          --net0 "virtio,bridge={{ item.bridge | default(vm_bridge) }}" \
+          --boot "order=net0;scsi0" \
+          --ostype l26 \
+          --agent 1
+        qm start "$VMID"
+        echo "$VMID"
+      register: _vm_create_results
+      loop: "{{ node_workers }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: summarize created VMs
+      ansible.builtin.debug:
+        msg: "Created '{{ item.item.name }}' → VM ID {{ item.stdout_lines | last | trim }} on {{ inventory_hostname }}"
+      loop: "{{ _vm_create_results.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"

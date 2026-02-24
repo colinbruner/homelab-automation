@@ -5,6 +5,7 @@ packages:
   - tftpd-hpa # serves pxeboot menu, files, vmlinuz, etc
   - nginx # serves ISOs
   - nfs-common # mounting nfs share
+  - curl # used by scripts/download-talos-images.sh
 
 # these packages provide ipxe files to serve over tftp
 ipxe_packages:
