@@ -1,16 +1,16 @@
 output "instance_name" {
   description = "GCP compute instance name"
-  value       = google_compute_instance.pocket_id.name
+  value       = google_compute_instance.this.name
 }
 
 output "instance_ephemeral_ip" {
   description = "Ephemeral external IP of the VM (outbound connectivity only — SSH goes through IAP, not this IP)"
-  value       = google_compute_instance.pocket_id.network_interface[0].access_config[0].nat_ip
+  value       = google_compute_instance.this.network_interface[0].access_config[0].nat_ip
 }
 
 output "tunnel_id" {
   description = "Cloudflare Tunnel ID"
-  value       = cloudflare_zero_trust_tunnel_cloudflared.pocket_id.id
+  value       = cloudflare_zero_trust_tunnel_cloudflared.auth_colinbruner.id
 }
 
 output "pocket_id_url" {

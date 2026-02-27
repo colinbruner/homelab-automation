@@ -14,9 +14,9 @@ resource "random_id" "tunnel_secret" {
 # Creates a named tunnel scoped to your account. The VM connects outbound
 # using tunnel_token — no inbound firewall rules or public IP needed.
 # ---------------------------------------------------------------------------
-resource "cloudflare_zero_trust_tunnel_cloudflared" "pocket_id" {
+resource "cloudflare_zero_trust_tunnel_cloudflared" "auth_colinbruner" {
   account_id = var.cloudflare_account_id
-  name       = "pocket-id"
+  name       = "auth-colinbruner-tunnel"
   secret     = random_id.tunnel_secret.b64_std
 }
 
@@ -25,9 +25,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared" "pocket_id" {
 # Routes id.example.com → localhost:1411 (Pocket ID's default port)
 # Catch-all returns 404 for any unmatched hostname.
 # ---------------------------------------------------------------------------
-resource "cloudflare_zero_trust_tunnel_cloudflared_config" "pocket_id" {
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "auth_colinbruner" {
   account_id = var.cloudflare_account_id
-  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.pocket_id.id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.auth_colinbruner.id
 
   config {
     ingress_rule {
@@ -48,6 +48,6 @@ resource "cloudflare_record" "pocket_id" {
   zone_id = var.cloudflare_zone_id
   name    = var.cloudflare_subdomain
   type    = "CNAME"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.pocket_id.id}.cfargotunnel.com"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.auth_colinbruner.id}.cfargotunnel.com"
   proxied = true
 }

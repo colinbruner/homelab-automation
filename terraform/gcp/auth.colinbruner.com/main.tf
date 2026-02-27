@@ -38,7 +38,7 @@ resource "google_project_service" "iap" {
 # No public SSH port is exposed — access requires a valid GCP identity.
 # ---------------------------------------------------------------------------
 resource "google_compute_firewall" "allow_iap_ssh" {
-  name    = "pocket-id-allow-iap-ssh"
+  name    = "auth-colinbruner-com-allow-iap-ssh"
   network = "default"
 
   description = "Allow SSH via GCP Identity-Aware Proxy only (35.235.240.0/20)"
@@ -49,23 +49,34 @@ resource "google_compute_firewall" "allow_iap_ssh" {
   }
 
   source_ranges = ["35.235.240.0/20"]
-  target_tags   = ["pocket-id"]
+  target_tags   = ["allow-iap-ssh"]
 
   priority = 1000
 }
 
 # ---------------------------------------------------------------------------
-# IAP SSH access — grants var.iap_user the ability to open IAP tunnels to
-# this specific instance. Instance-scoped so it doesn't affect other VMs.
+# Persistent data disk — survives VM replacement.
+#
+# All Pocket ID application data lives here:
+#   /opt/pocket-id/data/pocket-id.db  — SQLite database
+#   /opt/pocket-id/enc_key            — encryption key (fetched from Secret Manager)
+#   /opt/pocket-id/.env               — runtime config
+#   /opt/pocket-id/docker-compose.yml — service definition
+#   /opt/pocket-id/backup.sh          — backup script
+#
+# prevent_destroy ensures `terraform destroy` never deletes application data.
+# Total disk: 10 GB data + 20 GB boot = 30 GB (free-tier allowance).
 # ---------------------------------------------------------------------------
-resource "google_iap_tunnel_instance_iam_member" "ssh_access" {
-  project  = var.project_id
-  zone     = var.zone
-  instance = google_compute_instance.pocket_id.name
-  role     = "roles/iap.tunnelResourceAccessor"
-  member   = "user:${var.iap_user}"
+resource "google_compute_disk" "data" {
+  project = var.project_id
+  name    = "auth-colinbruner-com-data"
+  type    = "pd-standard"
+  zone    = var.zone
+  size    = 10
 
-  depends_on = [google_project_service.iap]
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -78,19 +89,27 @@ resource "google_iap_tunnel_instance_iam_member" "ssh_access" {
 #   - Network tier : STANDARD (egress cheaper; tunnel is outbound-only anyway)
 #   - No static IP : ephemeral IP for SSH; Cloudflare Tunnel handles ingress
 # ---------------------------------------------------------------------------
-resource "google_compute_instance" "pocket_id" {
-  name         = "pocket-id"
+resource "google_compute_instance" "this" {
+  name         = "auth-colinbruner-com"
   machine_type = "e2-micro"
   zone         = var.zone
 
-  tags = ["pocket-id"]
+  tags = ["auth-colinbruner-com", "allow-iap-ssh"]
 
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-12"
-      size  = 30            # 30 GB = free-tier monthly allowance
+      size  = 20            # 20 GB boot + 10 GB data disk = 30 GB free-tier allowance
       type  = "pd-standard" # HDD — free tier only covers pd-standard
     }
+  }
+
+  # Persistent data disk — mounted at /opt/pocket-id/ by the startup script.
+  # device_name appears as /dev/disk/by-id/google-pocket-id-data inside the VM.
+  attached_disk {
+    source      = google_compute_disk.data.self_link
+    device_name = "pocket-id-data"
+    mode        = "READ_WRITE"
   }
 
   network_interface {
@@ -111,13 +130,14 @@ resource "google_compute_instance" "pocket_id" {
     cloudflared_secret_name = google_secret_manager_secret.cloudflared_token.secret_id
     backup_bucket_name      = google_storage_bucket.backups.name
     backup_key_secret_name  = google_secret_manager_secret.backup_key.secret_id
+    enc_key_secret_name     = google_secret_manager_secret.enc_key.secret_id
   })
 
   # Attach the dedicated SA so the VM can authenticate to Secret Manager.
   # cloud-platform scope is required for Secret Manager (no narrower scope exists);
   # actual permissions are constrained by IAM in secrets.tf, not the scope.
   service_account {
-    email  = google_service_account.pocket_id.email
+    email  = google_service_account.this.email
     scopes = ["cloud-platform"]
   }
 
