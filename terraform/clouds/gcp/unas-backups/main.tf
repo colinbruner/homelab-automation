@@ -15,6 +15,6 @@ locals {
 module "backups" {
   for_each = local.unas_volumes
 
-  source = "../../modules/gcp/backups"
+  source = "../../../modules/gcp/backups"
   name   = each.value.name
 }

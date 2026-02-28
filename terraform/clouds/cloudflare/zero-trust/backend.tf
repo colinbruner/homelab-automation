@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
     bucket = "bruner-infra"
-    prefix = "clouds/gcp/backups/"
+    prefix = "clouds/cloudflare/zero-trust/"
   }
 }

@@ -21,20 +21,20 @@ resource "grafana_sso_settings" "pocket_id" {
     client_secret = var.grafana_client_secret
 
     # Pocket ID OIDC endpoints
-    auth_url    = "${var.pocket_id_app_url}/authorize"
-    token_url   = "${var.pocket_id_app_url}/api/oidc/token"
-    api_url     = "${var.pocket_id_app_url}/api/oidc/userinfo"
-    jwk_set_url = "${var.pocket_id_app_url}/.well-known/jwks.json"
+    auth_url  = "${var.pocket_id_app_url}/authorize"
+    token_url = "${var.pocket_id_app_url}/api/oidc/token"
+    api_url   = "${var.pocket_id_app_url}/api/oidc/userinfo"
+    #jwk_set_url = "${var.pocket_id_app_url}/.well-known/jwks.json"
 
     # groups scope is required for role_attribute_path group lookups
     scopes = "openid profile email groups"
 
     enabled           = true
-    allow_sign_up     = true
-    auto_login        = false
+    allow_sign_up     = false
+    auto_login        = true
     use_pkce          = true
     use_refresh_token = true
-    validate_id_token = true
+    #validate_id_token = true
 
     # JMESPath expression evaluated against the UserInfo response.
     # Groups are returned as a string array in the `groups` claim.

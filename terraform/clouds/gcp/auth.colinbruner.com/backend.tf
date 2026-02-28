@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
     bucket = "bruner-infra"
-    prefix = "auth.colinbruner.com/"
+    prefix = "clouds/gcp/auth.colinbruner.com/"
   }
 }

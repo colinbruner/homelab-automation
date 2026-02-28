@@ -23,13 +23,13 @@ resource "grafana_data_source" "gcp_logging" {
   json_data_encoded = jsonencode({
     authenticationType = "jwt"
     defaultProject     = var.gcp_project_id
-    clientEmail        = var.gcp_service_account_email
+    clientEmail        = data.terraform_remote_state.gcp_iam.outputs.grafana_gcp_logs_viewer_email
     tokenUri           = "https://oauth2.googleapis.com/token"
   })
 
   secure_json_data_encoded = jsonencode({
     # The private_key value from the GCP service account JSON key file.
     # Include the full PEM block with -----BEGIN/END RSA PRIVATE KEY----- lines.
-    privateKey = var.gcp_service_account_private_key
+    privateKey = data.terraform_remote_state.gcp_iam.outputs.grafana_gcp_logs_viewer_key
   })
 }
