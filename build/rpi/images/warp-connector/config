@@ -1,0 +1,54 @@
+###############################################################################
+# pi-gen configuration
+#
+# Reference: https://github.com/RPi-Distro/pi-gen/blob/arm64/README.md
+# Built from the arm64 branch (64-bit images).
+###############################################################################
+
+# Output image name — produces warp-connector-<date>-lite.img.xz
+IMG_NAME="warp-connector"
+
+# Debian release: trixie (Debian 13, stable as of Oct 2025) or bookworm (Debian 12)
+RELEASE="trixie"
+
+# Target hostname
+TARGET_HOSTNAME="warp-connector"
+
+# Default locale, keyboard, and timezone — adjust as needed
+LOCALE_DEFAULT="en_US.UTF-8"
+KEYBOARD_KEYMAP="us"
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT="America/Chicago"
+
+# Enable SSH server on first boot
+ENABLE_SSH=1
+
+# Target architecture (arm64 branch supports arm64 only)
+ARCH="arm64"
+
+# Output compression
+DEPLOY_COMPRESSION="xz"
+
+# Stages to build. stage0+stage1+stage2 produces a Lite (headless) image.
+# stage-custom is our homelab overlay (packages, config).
+STAGE_LIST="stage0 stage1 stage2 stage-custom"
+
+###############################################################################
+# First user
+#
+# FIRST_USER_NAME is the default non-root user created in the image.
+# Either set FIRST_USER_PASS (hashed with `openssl passwd -6 yourpassword`)
+# or set PUBKEY_SSH_FIRST_USER to pre-authorize an SSH key and leave the
+# password unset.
+#
+# To generate a hashed password:
+#   openssl passwd -6 yourpassword
+###############################################################################
+
+FIRST_USER_NAME="pi"
+
+# Credentials are injected at build time via --password and/or --ssh-key flags.
+# Do not set FIRST_USER_PASS or PUBKEY_SSH_FIRST_USER here — pass them to build.sh instead:
+#   ./build.sh warp-connector --password 'yourpassword' [--ssh-key 'ssh-ed25519 AAAA...']
+#
+# DISABLE_FIRST_BOOT_USER_RENAME is automatically set when --password is provided.

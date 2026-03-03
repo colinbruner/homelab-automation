@@ -1,0 +1,13 @@
+curl
+git
+vim
+htop
+net-tools
+nmap
+python3
+python3-pip
+jq
+unzip
+ca-certificates
+gnupg
+lsb-release
