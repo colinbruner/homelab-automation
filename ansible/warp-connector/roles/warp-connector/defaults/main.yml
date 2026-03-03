@@ -1,0 +1,13 @@
+---
+# defaults file for warp-connector
+
+packages:
+  - sudo
+  - gnupg
+  - lsb-release
+
+# Cloudflare WARP client APT repository
+warp_gpg_url: "https://pkg.cloudflareclient.com/pubkey.gpg"
+warp_gpg_dest: "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
+warp_gpg_tmp: "/tmp/cloudflare-warp-pubkey.gpg"
+warp_apt_file: "/etc/apt/sources.list.d/cloudflare-client.list"

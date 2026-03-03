@@ -1,0 +1,11 @@
+---
+# handlers file for warp-connector
+
+- name: update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: restart warp-svc
+  ansible.builtin.service:
+    name: warp-svc
+    state: restarted
