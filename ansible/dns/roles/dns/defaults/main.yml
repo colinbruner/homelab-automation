@@ -1,0 +1,17 @@
+---
+# Technitium DNS Server
+technitium_install_script: "https://download.technitium.com/dns/install.sh"
+technitium_service: "dns"
+technitium_data_dir: "/etc/dns"
+technitium_install_dir: "/usr/share/technitium-dns-server"
+
+# NFS backup
+nfs_server: "192.168.10.5"
+nfs_export: "/var/nfs/shared/homelab"
+nfs_mount_point: "/mnt/backup/homelab"
+nfs_mount_opts: "rw,sync,hard,intr,rsize=8192,wsize=8192"
+
+# Backup retention (days)
+backup_retain_days: 7
+# Time to run nightly backup (systemd OnCalendar format)
+backup_schedule: "02:00:00"

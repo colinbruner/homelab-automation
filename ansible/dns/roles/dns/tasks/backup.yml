@@ -1,0 +1,99 @@
+---
+- name: install nfs client packages
+  ansible.builtin.apt:
+    pkg:
+      - nfs-common
+      - rsync
+    state: present
+
+- name: check if nfs already mounted
+  ansible.builtin.command: mountpoint -q {{ nfs_mount_point }}
+  register: nfs_mounted
+  changed_when: false
+  failed_when: false
+
+- name: create nfs mount point
+  ansible.builtin.file:
+    path: "{{ nfs_mount_point }}"
+    state: directory
+    mode: "0750"
+  when: nfs_mounted.rc != 0
+
+- name: mount nfs backup share
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ nfs_export }}"
+    path: "{{ nfs_mount_point }}"
+    fstype: nfs
+    opts: "{{ nfs_mount_opts }}"
+    state: mounted
+
+- name: create dns backup subdirectory
+  ansible.builtin.file:
+    path: "{{ nfs_mount_point }}/dns"
+    state: directory
+    mode: "0750"
+
+- name: install backup script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/dns-backup.sh
+    mode: "0750"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      SOURCE="{{ technitium_data_dir }}/"
+      DEST="{{ nfs_mount_point }}/dns"
+      DATE=$(date +%Y%m%d-%H%M%S)
+      ARCHIVE="${DEST}/dns-backup-${DATE}.tar.gz"
+
+      echo "[$(date)] Starting DNS backup..."
+
+      # Sync to a staging directory then archive
+      rsync -a --delete "${SOURCE}" "${DEST}/latest/"
+      tar -czf "${ARCHIVE}" -C "${DEST}" latest/
+
+      # Remove backups older than {{ backup_retain_days }} days
+      find "${DEST}" -maxdepth 1 -name "dns-backup-*.tar.gz" -mtime +{{ backup_retain_days }} -delete
+
+      echo "[$(date)] Backup complete: ${ARCHIVE}"
+
+- name: install backup systemd service unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dns-backup.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Technitium DNS nightly backup
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/dns-backup.sh
+      StandardOutput=journal
+      StandardError=journal
+  notify: reload systemd
+
+- name: install backup systemd timer unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dns-backup.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run Technitium DNS backup nightly
+
+      [Timer]
+      OnCalendar=*-*-* {{ backup_schedule }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  notify: reload systemd
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: enable and start backup timer
+  ansible.builtin.service:
+    name: dns-backup.timer
+    enabled: true
+    state: started

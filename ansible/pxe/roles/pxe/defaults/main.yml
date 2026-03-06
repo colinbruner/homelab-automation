@@ -14,24 +14,28 @@ ipxe_packages:
   - shim-signed
 
 directories:
+  # tftp root — iPXE/grub/undionly files
+  - /srv/backup/homelab/pxe/tftp
   # contains vmlinuz, initrd, etc
-  - /srv/tftp/images
+  - /srv/backup/homelab/pxe/tftp/images
   # files served by NGINX (e.g. ISOs)
-  - /srv/http
+  - /srv/backup/homelab/pxe/http
 
 # The path on the PXE server to mount 'nfs_server_share_path'
-pxe_nfs_share_path: "/srv/"
+pxe_nfs_share_path: "/srv/backup/homelab"
 # IP Address or DNS for PXE Server (tftp, nginx)
 pxe_server_addr: "192.168.10.4"
 # The NGINX root path to serve images from
-pxe_http_root_path: "/srv/http"
-# The path to copy vmlinuz, initrd, etc
-pxe_tftp_boot_path: "/srv/tftp/images"
+pxe_http_root_path: "/srv/backup/homelab/pxe/http"
+# The TFTP root — iPXE/grub/undionly files live here
+pxe_tftp_root_path: "/srv/backup/homelab/pxe/tftp"
+# The path to copy vmlinuz, initrd, etc (subdir of pxe_tftp_root_path)
+pxe_tftp_boot_path: "/srv/backup/homelab/pxe/tftp/images"
 
 # IP Address or DNS for NFS Server (images/isos)
 nfs_server_addr: "192.168.10.5"
 # The NFS Server Share to mount locally to PXE Server
-nfs_server_share_path: "/var/nfs/shared/pxe"
+nfs_server_share_path: "/var/nfs/shared/homelab"
 
 # default ipxe installed files to copy and serve via tftp
 ipxe_files_served_by_tftp:

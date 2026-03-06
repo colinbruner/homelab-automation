@@ -1,0 +1,24 @@
+---
+# The Technitium install script handles both fresh installs and in-place upgrades.
+# Running it again will upgrade to the latest available version.
+# https://technitium.com/dns/
+
+- name: install prerequisite packages
+  ansible.builtin.apt:
+    pkg:
+      - curl
+      - libicu-dev
+    state: present
+    update_cache: true
+
+- name: install or upgrade technitium dns server
+  ansible.builtin.shell:
+    cmd: "curl -sSL {{ technitium_install_script }} | bash"
+  register: technitium_install
+  changed_when: "'TechnitiumDNS' in technitium_install.stdout"
+
+- name: ensure technitium service is enabled and running
+  ansible.builtin.service:
+    name: "{{ technitium_service }}"
+    enabled: true
+    state: started

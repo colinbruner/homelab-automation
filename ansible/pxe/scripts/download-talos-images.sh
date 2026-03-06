@@ -27,7 +27,7 @@ else
     ARCHITECTURES=(amd64 arm64)
 fi
 
-TFTP_IMAGES_PATH="${TFTP_IMAGES_PATH:-/srv/tftp/images}"
+TFTP_IMAGES_PATH="${TFTP_IMAGES_PATH:-/srv/backup/homelab/pxe/tftp/images}"
 GITHUB_BASE="https://github.com/siderolabs/talos/releases/download"
 FORCE="${FORCE:-0}"
 CHANGED=false

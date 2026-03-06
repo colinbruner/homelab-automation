@@ -1,0 +1,9 @@
+---
+- name: user
+  ansible.builtin.include_tasks: user.yml
+
+- name: install
+  ansible.builtin.include_tasks: install.yml
+
+- name: backup
+  ansible.builtin.include_tasks: backup.yml

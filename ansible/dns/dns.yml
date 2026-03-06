@@ -1,0 +1,16 @@
+---
+- hosts: all
+  gather_facts: false
+  pre_tasks:
+    - name: bootstrap python3
+      ansible.builtin.raw: apt-get update && apt-get install -y python3
+      become: true
+      changed_when: false
+
+    - name: gather facts
+      ansible.builtin.setup:
+      become: true
+
+  roles:
+    - role: dns
+      become: true

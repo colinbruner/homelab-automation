@@ -6,8 +6,8 @@
 # This script will mount ISO images that exact on filesystem and extract
 # the necessary boot components (initrd, vmlinuz) to be served over HTTP
 
-ISO_PATH=${1:-/srv/http/images}  # /srv/http/images
-BOOT_PATH=${2:-/srv/tftp/images} # /srv/tftp/images
+ISO_PATH=${1:-/srv/backup/homelab/pxe/http/images}
+BOOT_PATH=${2:-/srv/backup/homelab/pxe/tftp/images}
 CHANGED=false
 
 # extract ubuntu isos will extract the necessary boot files from ubuntu isos casper directory

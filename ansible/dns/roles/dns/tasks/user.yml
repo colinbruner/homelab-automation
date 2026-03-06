@@ -1,0 +1,26 @@
+---
+- name: install sudo
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+
+- name: create pi user
+  ansible.builtin.user:
+    name: pi
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    state: present
+
+- name: add ssh public key for pi user
+  ansible.posix.authorized_key:
+    user: pi
+    key: "{{ pi_ssh_pubkey }}"
+    state: present
+
+- name: allow pi passwordless sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/pi
+    content: "pi ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: visudo -cf %s

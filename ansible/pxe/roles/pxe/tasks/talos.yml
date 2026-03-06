@@ -6,7 +6,7 @@
 
 - name: install talos directories
   ansible.builtin.file:
-    path: "/srv/tftp/images/talos/{{ talos_linux_version }}/{{ item }}"
+    path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}"
     state: directory
     mode: "755"
   loop: "{{ talos_linux_architectures }}"
@@ -14,30 +14,30 @@
 
 - name: download talos vmlinuz
   ansible.builtin.get_url:
-    url: https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/vmlinuz-{{ item }}
-    dest: /srv/tftp/images/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz
+    url: "https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/vmlinuz-{{ item }}"
+    dest: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz"
     mode: "644"
   loop: "{{ talos_linux_architectures }}"
   notify: restart tftpd
 
 - name: ensure vmlinuz is world readable
   ansible.builtin.file:
-    path: "/srv/tftp/images/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz"
+    path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz"
     mode: "644"
   loop: "{{ talos_linux_architectures }}"
   notify: restart tftpd
 
 - name: download talos initramfs
   ansible.builtin.get_url:
-    url: https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/initramfs-{{ item }}.xz 
-    dest: /srv/tftp/images/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz
+    url: "https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/initramfs-{{ item }}.xz"
+    dest: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz"
     mode: "644"
   loop: "{{ talos_linux_architectures }}"
   notify: restart tftpd
 
 - name: ensure initramfs is world readable
   ansible.builtin.file:
-    path: "/srv/tftp/images/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz"
+    path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz"
     mode: "644"
   loop: "{{ talos_linux_architectures }}"
   notify: restart tftpd
