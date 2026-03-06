@@ -1,0 +1,221 @@
+---
+###############################################################################
+# Proxmox VE Cluster Upgrade: 8.3 → 8.4 → 9.x
+#
+# Upgrades all nodes in the [proxmox] inventory group one at a time (serial: 1)
+# to preserve cluster quorum throughout the process.
+#
+# Usage:
+#   ./upgrade.sh                    # full upgrade
+#   ./upgrade.sh --tags preflight   # pre-flight checks only
+#   ./upgrade.sh --tags pve84       # upgrade to PVE 8.4 only
+#   ./upgrade.sh --tags pve9        # upgrade to PVE 9 only (requires 8.4 first)
+###############################################################################
+
+###############################################################################
+# PLAY 1: Pre-flight checks
+###############################################################################
+- name: pre-flight checks
+  hosts: proxmox
+  gather_facts: true
+  serial: 1
+  tags: preflight
+
+  tasks:
+    - name: get current proxmox version
+      ansible.builtin.command: pveversion -v
+      register: pve_version
+      changed_when: false
+
+    - name: print current proxmox version
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ pve_version.stdout_lines }}"
+
+    - name: check free disk space on /
+      ansible.builtin.shell: |
+        df -BG / | awk 'NR==2 {gsub("G",""); print $4}'
+      register: disk_free_gb
+      changed_when: false
+
+    - name: fail if insufficient disk space (< 5GB free)
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }}: only {{ disk_free_gb.stdout | trim }}GB free on /. At least 5GB required."
+      when: (disk_free_gb.stdout | trim | int) < 5
+
+    - name: print disk space
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ disk_free_gb.stdout | trim }}GB free on / — OK"
+
+    - name: check cluster quorum status
+      ansible.builtin.command: pvecm status
+      register: pvecm_status
+      changed_when: false
+      failed_when: false
+
+    - name: print cluster quorum status
+      ansible.builtin.debug:
+        msg: "{{ pvecm_status.stdout_lines }}"
+
+    - name: install pve8to9 checker
+      ansible.builtin.apt:
+        name: pve-manager
+        state: latest
+        update_cache: true
+
+    - name: run pve8to9 pre-upgrade checker
+      ansible.builtin.command: pve8to9
+      register: pve8to9_output
+      changed_when: false
+      failed_when: false
+
+    - name: print pve8to9 checker output
+      ansible.builtin.debug:
+        msg: "{{ pve8to9_output.stdout_lines }}"
+
+    - name: warn if pve8to9 reported issues
+      ansible.builtin.debug:
+        msg: "WARNING: pve8to9 reported issues on {{ inventory_hostname }}. Review output above before proceeding."
+      when: pve8to9_output.rc != 0
+
+
+###############################################################################
+# PLAY 2: Upgrade to latest PVE 8.4 (Debian 12 Bookworm)
+###############################################################################
+- name: upgrade to pve 8.4
+  hosts: proxmox
+  gather_facts: true
+  serial: 1
+  tags: pve84
+
+  tasks:
+    - name: disable pve enterprise repository
+      ansible.builtin.command:
+        cmd: mv /etc/apt/sources.list.d/pve-enterprise.list /etc/apt/sources.list.d/pve-enterprise.list.disabled
+        creates: /etc/apt/sources.list.d/pve-enterprise.list.disabled
+
+    - name: disable ceph enterprise repository
+      ansible.builtin.command:
+        cmd: mv /etc/apt/sources.list.d/ceph.list /etc/apt/sources.list.d/ceph.list.disabled
+        creates: /etc/apt/sources.list.d/ceph.list.disabled
+      failed_when: false
+
+    - name: add pve no-subscription repository (bookworm)
+      ansible.builtin.copy:
+        content: "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription\n"
+        dest: /etc/apt/sources.list.d/pve-no-subscription.list
+        mode: "644"
+
+    - name: apt update
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: dist-upgrade to latest pve 8.4
+      ansible.builtin.apt:
+        upgrade: dist
+        dpkg_options: "force-confdef,force-confold"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: reboot node
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        post_reboot_delay: 30
+        msg: "Rebooting after PVE 8.4 upgrade"
+
+    - name: verify node is on pve 8.4
+      ansible.builtin.command: pveversion
+      register: pve_version_84
+      changed_when: false
+
+    - name: print pve 8.4 version
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} post-upgrade: {{ pve_version_84.stdout }}"
+
+    - name: fail if not on pve 8.4
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }}: expected PVE 8.4.x but got: {{ pve_version_84.stdout }}"
+      when: "'pve-manager/8.4' not in pve_version_84.stdout"
+
+
+###############################################################################
+# PLAY 3: Upgrade to PVE 9 (Debian 13 Trixie)
+###############################################################################
+- name: upgrade to pve 9 (debian trixie)
+  hosts: proxmox
+  gather_facts: true
+  serial: 1
+  tags: pve9
+
+  tasks:
+    - name: run pve8to9 --full pre-upgrade checker
+      ansible.builtin.command: pve8to9 --full
+      register: pve8to9_full
+      changed_when: false
+      failed_when: pve8to9_full.rc != 0
+
+    - name: print pve8to9 --full output
+      ansible.builtin.debug:
+        msg: "{{ pve8to9_full.stdout_lines }}"
+
+    - name: update /etc/apt/sources.list — bookworm to trixie
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: 'bookworm'
+        replace: 'trixie'
+
+    - name: remove legacy pve no-subscription list (bookworm)
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/pve-no-subscription.list
+        state: absent
+
+    - name: add pve 9 no-subscription repository (trixie, deb822 format)
+      ansible.builtin.copy:
+        content: |
+          Types: deb
+          URIs: http://download.proxmox.com/debian/pve
+          Suites: trixie
+          Components: pve-no-subscription
+          Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+        dest: /etc/apt/sources.list.d/proxmox.sources
+        mode: "644"
+
+    - name: apt update
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: dist-upgrade to pve 9
+      ansible.builtin.apt:
+        upgrade: dist
+        dpkg_options: "force-confdef,force-confold"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: reboot node into pve 9 kernel
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        post_reboot_delay: 30
+        msg: "Rebooting into PVE 9 / Debian Trixie"
+
+    - name: verify node is on pve 9
+      ansible.builtin.command: pveversion -v
+      register: pve_version_9
+      changed_when: false
+
+    - name: print pve 9 version
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} post-upgrade: {{ pve_version_9.stdout_lines }}"
+
+    - name: fail if not on pve 9
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }}: expected PVE 9.x but got: {{ pve_version_9.stdout }}"
+      when: "'pve-manager/9.' not in pve_version_9.stdout"
+
+    - name: check cluster quorum post-upgrade
+      ansible.builtin.command: pvecm status
+      register: pvecm_post
+      changed_when: false
+      failed_when: false
+
+    - name: print cluster quorum status post-upgrade
+      ansible.builtin.debug:
+        msg: "{{ pvecm_post.stdout_lines }}"
