@@ -1,4 +1,6 @@
 build/ipxe/ipxe
+build/rpi/bin/
+build/rpi/pi-gen/
 
 build/bin/*
 build/manifests/**

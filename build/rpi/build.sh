@@ -137,11 +137,11 @@ if [[ -d $IMAGE_DIR/stage-custom ]]; then
   cp -r "$IMAGE_DIR/stage-custom" "$PIGEN_DIR/stage-custom"
 
   # Render 01-run-chroot.sh.tpl if it exists
-  TEMPLATE="$IMAGE_DIR/stage-custom/01-run-chroot.sh.tpl"
-  RENDERED="$PIGEN_DIR/stage-custom/01-run-chroot.sh"
+  TEMPLATE="$IMAGE_DIR/stage-custom/00-config/01-run-chroot.sh.tpl"
+  RENDERED="$PIGEN_DIR/stage-custom/00-config/01-run-chroot.sh"
 
   # Remove the template from the pi-gen copy (it's not a valid stage file)
-  rm -f "$PIGEN_DIR/stage-custom/01-run-chroot.sh.tpl"
+  rm -f "$PIGEN_DIR/stage-custom/00-config/01-run-chroot.sh.tpl"
 
   if [[ -f $TEMPLATE ]]; then
     if [[ -n $NM_ADDRESS ]]; then

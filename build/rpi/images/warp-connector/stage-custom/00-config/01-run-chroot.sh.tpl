@@ -36,3 +36,12 @@ EOF
 
 # NetworkManager requires connection files to be owner-readable only
 chmod 600 "$NM_CONN_FILE"
+
+# Disable cloud-init network configuration so it does not overwrite the
+# NM keyfile above on first boot. The network-config file in /boot/firmware
+# is still present but cloud-init will not apply it.
+mkdir -p /etc/cloud/cloud.cfg.d
+cat > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg <<EOF
+network:
+  config: disabled
+EOF

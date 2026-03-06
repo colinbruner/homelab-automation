@@ -20,9 +20,10 @@ images/
 └── warp-connector/       # Cloudflare WARP Connector node
     ├── config            # pi-gen configuration
     └── stage-custom/
-        ├── 00-packages              # apt packages to install
-        ├── 01-run-chroot.sh.tpl     # static IP template (rendered at build time)
-        └── SKIP_IMAGES
+        ├── SKIP_IMAGES              # prevents intermediate image generation
+        └── 00-config/               # pi-gen requires files in a subdirectory
+            ├── 00-packages          # apt packages to install
+            └── 01-run-chroot.sh.tpl # static IP template (rendered at build time)
 ```
 
 To add a new image, create a new directory under `images/` with at minimum a `config` file.
@@ -116,7 +117,7 @@ Replace `/dev/sdX` with your microSD card device (use `diskutil list` on macOS t
 
 1. Create `images/<name>/` directory
 2. Copy an existing `config` as a starting point and adjust `IMG_NAME`, `TARGET_HOSTNAME`, etc.
-3. Optionally add `stage-custom/00-packages`, `stage-custom/01-run-chroot.sh.tpl` (or `01-run-chroot.sh`), and `stage-custom/SKIP_IMAGES`
+3. Optionally add `stage-custom/SKIP_IMAGES` and a subdirectory (e.g. `stage-custom/00-config/`) containing `00-packages` and/or `01-run-chroot.sh.tpl`
 4. Run `./build.sh <name>`
 
 To run arbitrary commands inside the image at build time, use `stage-custom/01-run-chroot.sh`:
