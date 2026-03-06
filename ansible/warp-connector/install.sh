@@ -14,7 +14,7 @@ WARP_TOKEN=$(op read "op://lab/cloudflare-warp-connector/token")
 # https://docs.ansible.com/ansible/latest/inventory_guide/intro_patterns.html#patterns-and-ansible-playbook-flags
 # NOTE: must have trailing comma
 ansible-playbook \
-    -u root \
+    -u pi \
     -i "${TARGET}," \
     --extra-vars "warp_connector_token=${WARP_TOKEN}" \
     warp-connector.yml

@@ -1,5 +1,3 @@
----
-
 - name: enable ip forwarding
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
@@ -20,23 +18,11 @@
     enabled: true
     state: started
 
-- name: check warp connector status
-  ansible.builtin.command:
-    cmd: warp-cli connector show
-  register: warp_connector
-  changed_when: false
-  failed_when: false
-  become_user: warp
-
 - name: register warp connector with cloudflare
   ansible.builtin.command:
     cmd: "warp-cli --accept-tos connector new {{ warp_connector_token }}"
-  when: warp_connector.rc != 0
-  become_user: warp
 
 - name: connect warp
   ansible.builtin.command:
-    cmd: "warp-cli connect --accept-tos"
-  when: warp_connector.rc != 0
-  become_user: warp
-  notify: restart warp-svc
+    cmd: "warp-cli connect"
+

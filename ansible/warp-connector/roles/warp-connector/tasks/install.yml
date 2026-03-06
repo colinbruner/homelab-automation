@@ -5,20 +5,14 @@
     pkg: "{{ packages }}"
     update_cache: true
 
-- name: download cloudflare warp gpg key
-  ansible.builtin.get_url:
-    url: "{{ warp_gpg_url }}"
-    dest: "{{ warp_gpg_tmp }}"
-    mode: "644"
-
-- name: dearmor cloudflare warp gpg key
-  ansible.builtin.command:
-    cmd: "gpg --yes --dearmor --output {{ warp_gpg_dest }} {{ warp_gpg_tmp }}"
+- name: add cloudflare warp gpg key
+  ansible.builtin.shell:
+    cmd: "curl -fsSL {{ warp_gpg_url }} | gpg --yes --dearmor --output {{ warp_gpg_dest }}"
     creates: "{{ warp_gpg_dest }}"
 
 - name: add cloudflare warp apt repository
   ansible.builtin.copy:
-    content: "deb [arch=amd64 signed-by={{ warp_gpg_dest }}] https://pkg.cloudflareclient.com/ {{ ansible_distribution_release }} main\n"
+    content: "deb [signed-by={{ warp_gpg_dest }}] https://pkg.cloudflareclient.com/ {{ ansible_distribution_release }} main\n"
     dest: "{{ warp_apt_file }}"
     mode: "644"
   notify: update apt cache
