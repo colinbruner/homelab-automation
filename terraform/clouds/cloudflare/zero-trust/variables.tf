@@ -66,6 +66,16 @@ variable "cloudflare_domain" {
 # Homelab services
 # ---------------------------------------------------------------------------
 
+variable "proxmox_service_url" {
+  description = "Internal URL cloudflared uses to reach Proxmox, e.g. https://192.168.10.11:8006 — any cluster node works"
+  type        = string
+}
+
+variable "argocd_service_url" {
+  description = "Internal URL cloudflared uses to reach ArgoCD, e.g. https://192.168.10.x or https://argocd-server.argocd.svc.cluster.local"
+  type        = string
+}
+
 variable "prometheus_service_url" {
   description = "Internal URL cloudflared uses to reach Prometheus, e.g. http://192.168.10.x:9090"
   type        = string

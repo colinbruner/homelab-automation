@@ -32,6 +32,26 @@ output "homelab_tunnel_token" {
 # Access applications
 # ---------------------------------------------------------------------------
 
+output "proxmox_url" {
+  description = "Public URL for Proxmox (Access-protected)"
+  value       = "https://pve.${var.cloudflare_domain}"
+}
+
+output "proxmox_access_application_id" {
+  description = "Cloudflare Access application ID for Proxmox"
+  value       = cloudflare_zero_trust_access_application.proxmox.id
+}
+
+output "argocd_url" {
+  description = "Public URL for ArgoCD (Access-protected)"
+  value       = "https://argocd.${var.cloudflare_domain}"
+}
+
+output "argocd_access_application_id" {
+  description = "Cloudflare Access application ID for ArgoCD"
+  value       = cloudflare_zero_trust_access_application.argocd.id
+}
+
 output "prometheus_url" {
   description = "Public URL for Prometheus (Access-protected)"
   value       = "https://prometheus.${var.cloudflare_domain}"

@@ -32,6 +32,26 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.homelab.id
 
   config {
+    # Proxmox — Access-protected; HTTPS backend requires TLS verify disabled
+    ingress_rule {
+      hostname = "pve.${var.cloudflare_domain}"
+      service  = var.proxmox_service_url
+
+      origin_request {
+        no_tls_verify = true
+      }
+    }
+
+    # ArgoCD — Access-protected
+    ingress_rule {
+      hostname = "argocd.${var.cloudflare_domain}"
+      service  = var.argocd_service_url
+
+      origin_request {
+        no_tls_verify = true
+      }
+    }
+
     # Prometheus — public (Access-protected) and internal (WARP-only)
     ingress_rule {
       hostname = "prometheus.${var.cloudflare_domain}"
