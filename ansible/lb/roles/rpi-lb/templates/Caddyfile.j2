@@ -1,0 +1,81 @@
+# Managed by Ansible — do not edit manually
+{
+	# Bind admin API on all interfaces so CaddyManager (Docker) can reach it
+	# origins allows Host headers from all addresses caddy may send requests to itself with
+	admin 0.0.0.0:2019 {
+		origins localhost:2019 127.0.0.1:2019 0.0.0.0:2019
+	}
+
+	order authenticate before respond
+	order authorize before basicauth
+
+	security {
+		oauth identity provider pocket-id {
+			realm pocket-id
+			driver generic
+			client_id {$POCKET_ID_CLIENT_ID}
+			client_secret {$POCKET_ID_CLIENT_SECRET}
+			scopes openid email profile
+			metadata_url {$POCKET_ID_ISSUER_URL}/.well-known/openid-configuration
+		}
+
+		authentication portal main {
+			crypto default token lifetime 3600
+			crypto key sign-verify {$CADDY_AUTH_KEY}
+			enable identity provider pocket-id
+			cookie domain {{ caddy_cookie_domain }}
+			transform user {
+				match realm pocket-id
+				action add role authp/user
+			}
+		}
+
+		authorization policy protected {
+			set auth url https://{{ caddy_auth_fqdn }}/auth/
+			crypto key verify {$CADDY_AUTH_KEY}
+			allow roles authp/user
+			validate bearer header
+			inject headers with claims
+		}
+	}
+}
+
+# Auth portal — handles Pocket ID OIDC login flow and callback
+# Register redirect URI in Pocket ID: https://{{ caddy_auth_fqdn }}/auth/oauth2/pocket-id/authorization-code-callback
+{{ caddy_auth_fqdn }} {
+	tls {
+		dns cloudflare {$CLOUDFLARE_API_TOKEN}
+	}
+	route /auth* {
+		authenticate with main
+	}
+}
+
+{% for backend in caddy_backends %}
+# {{ backend.name }}
+{{ backend.fqdn }} {
+	tls {
+		dns cloudflare {$CLOUDFLARE_API_TOKEN}
+	}
+{% if backend.oidc_protected | default(false) %}
+	route /auth* {
+		authenticate with main
+	}
+	route * {
+		authorize with protected
+{% if backend.tls_skip_verify | default(false) %}
+		reverse_proxy {{ backend.upstream }} {
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
+{% else %}
+		reverse_proxy {{ backend.upstream }}
+{% endif %}
+	}
+{% else %}
+	reverse_proxy {{ backend.upstream }}
+{% endif %}
+}
+
+{% endfor %}
