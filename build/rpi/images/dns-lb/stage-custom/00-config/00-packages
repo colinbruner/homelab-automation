@@ -1,0 +1,13 @@
+debian-keyring
+debian-archive-keyring
+apt-transport-https
+curl
+ca-certificates
+gnupg
+lsb-release
+libicu-dev
+nfs-common
+rsync
+vim
+htop
+jq

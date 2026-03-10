@@ -8,7 +8,7 @@ Produces a `.img.xz` that can be flashed directly to a microSD card with `dd` or
 
 - Debian 13 Trixie base (Lite — no desktop, arm64)
 - SSH pre-enabled
-- Custom `stage-custom` overlay with homelab packages: `curl`, `git`, `vim`, `htop`, `net-tools`, `nmap`, `python3`, `jq`
+- Custom `stage-custom` overlay per image (packages, services, config)
 - First-boot wizard disabled (headless-safe)
 
 ## Images
@@ -17,14 +17,25 @@ Each image lives in its own directory under `images/`:
 
 ```
 images/
-└── warp-connector/       # Cloudflare WARP Connector node
-    ├── config            # pi-gen configuration
+├── warp-connector/       # Cloudflare WARP Connector node
+│   ├── config
+│   └── stage-custom/
+│       ├── SKIP_IMAGES
+│       └── 00-config/
+│           ├── 00-packages              # apt packages
+│           └── 01-run-chroot.sh.tpl    # static IP template
+│
+└── dns-lb/               # DNS + load balancer server (Technitium + Caddy)
+    ├── config
     └── stage-custom/
-        ├── SKIP_IMAGES              # prevents intermediate image generation
-        └── 00-config/               # pi-gen requires files in a subdirectory
-            ├── 00-packages          # apt packages to install
-            └── 01-run-chroot.sh.tpl # static IP template (rendered at build time)
+        ├── SKIP_IMAGES
+        └── 00-config/
+            ├── 00-packages              # apt packages (libicu-dev, nfs-common, etc.)
+            ├── 01-run-chroot.sh         # installs Docker, Caddy, Technitium
+            └── 02-run-chroot.sh.tpl    # static IP template
 ```
+
+The `dns-lb` image is intended to be built twice — once per server — with different `--hostname` and `--ip` values. Ansible (`ansible/dns/` and `ansible/lb/`) manages all post-boot configuration.
 
 To add a new image, create a new directory under `images/` with at minimum a `config` file.
 
@@ -43,7 +54,7 @@ Each image has its own `images/<name>/config`. Key settings:
 |----------|---------|-------------|
 | `IMG_NAME` | *(image name)* | Output filename prefix |
 | `RELEASE` | `trixie` | Debian release. Change to `bookworm` if trixie is unsupported |
-| `TARGET_HOSTNAME` | *(image name)* | Hostname baked into the image |
+| `TARGET_HOSTNAME` | *(image name)* | Hostname baked into the image — override with `--hostname` at build time |
 | `TIMEZONE_DEFAULT` | `America/Chicago` | Timezone |
 | `FIRST_USER_NAME` | `pi` | Default non-root user |
 
@@ -85,11 +96,39 @@ cd build/rpi
 ./build.sh
 ```
 
+### dns-lb (build two servers from one image definition)
+
+```bash
+cd build/rpi
+
+# Server 1
+./build.sh dns-lb \
+  --hostname rpi1 \
+  --ssh-key 'ssh-ed25519 AAAA...' \
+  --ip 192.168.10.x/24 \
+  --gateway 192.168.10.1 \
+  --dns "192.168.10.1;"
+
+# Server 2
+./build.sh dns-lb \
+  --hostname rpi2 \
+  --ssh-key 'ssh-ed25519 AAAA...' \
+  --ip 192.168.10.y/24 \
+  --gateway 192.168.10.1 \
+  --dns "192.168.10.1;"
+```
+
+After flashing, run Ansible to apply configuration:
+```bash
+cd ansible/dns && ./install.sh 192.168.10.x
+cd ansible/lb  && ./install.sh 192.168.10.x
+```
+
 The build takes approximately 20–40 minutes on first run. Subsequent runs clone pi-gen fresh each time.
 
 ### Static IP Templating
 
-If the image's `stage-custom/` directory contains a `01-run-chroot.sh.tpl` file, `build.sh` renders it at build time by substituting `@@VAR@@` placeholders with the values provided via CLI flags:
+If the image's `stage-custom/` directory contains any `*.sh.tpl` files, `build.sh` renders them at build time by substituting `@@VAR@@` placeholders with the values provided via CLI flags. The `.tpl` extension is stripped to produce the final chroot script (e.g. `02-run-chroot.sh.tpl` → `02-run-chroot.sh`).
 
 | Placeholder | Flag | Default |
 |-------------|------|---------|
@@ -117,27 +156,33 @@ Replace `/dev/sdX` with your microSD card device (use `diskutil list` on macOS t
 
 1. Create `images/<name>/` directory
 2. Copy an existing `config` as a starting point and adjust `IMG_NAME`, `TARGET_HOSTNAME`, etc.
-3. Optionally add `stage-custom/SKIP_IMAGES` and a subdirectory (e.g. `stage-custom/00-config/`) containing `00-packages` and/or `01-run-chroot.sh.tpl`
-4. Run `./build.sh <name>`
+3. Add `stage-custom/SKIP_IMAGES` and a `stage-custom/00-config/` subdirectory
+4. Add `00-packages` for apt packages and/or numbered `NN-run-chroot.sh` scripts for arbitrary install steps
+5. Optionally add a `NN-run-chroot.sh.tpl` for static IP (rendered from `--ip`/`--gateway` flags)
+6. Run `./build.sh <name>`
 
-To run arbitrary commands inside the image at build time, use `stage-custom/01-run-chroot.sh`:
+**Chroot scripts** run inside the image during build. Services won't start (pi-gen blocks them), but packages install and systemd units are enabled for first boot:
 ```bash
 #!/bin/bash -e
-# Runs inside the image chroot during build
-systemctl enable your-service
+# 01-run-chroot.sh — runs inside the image chroot
+curl -fsSL https://example.com/install.sh | bash
 ```
 
-To support static IP configuration baked in at build time, use `stage-custom/01-run-chroot.sh.tpl` with `@@VAR@@` placeholders instead:
+**Static IP template** — use a `*.sh.tpl` file with `@@VAR@@` placeholders:
 ```bash
 #!/bin/bash -e
+# 02-run-chroot.sh.tpl
 INTERFACE="@@NM_INTERFACE@@"
 ADDRESS="@@NM_ADDRESS@@"
-GATEWAY="@@NM_GATEWAY@@"
-DNS="@@NM_DNS@@"
-# ... write NetworkManager keyfile, etc.
+# ...
 ```
-
 Then pass `--ip` and `--gateway` at build time:
 ```bash
 ./build.sh <name> --ip 192.168.1.5/24 --gateway 192.168.1.1
+```
+
+**Hostname override** — use `--hostname` to produce differently-named images from the same definition:
+```bash
+./build.sh <name> --hostname server1 --ip 192.168.1.5/24 --gateway 192.168.1.1
+./build.sh <name> --hostname server2 --ip 192.168.1.6/24 --gateway 192.168.1.1
 ```

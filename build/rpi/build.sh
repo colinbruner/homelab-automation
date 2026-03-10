@@ -12,7 +12,7 @@ IMAGE_NAME="${1:-}"
 ###
 
 if [[ -z $IMAGE_NAME ]]; then
-  echo "Usage: $0 <image-name> [--ip ADDRESS/PREFIX] [--gateway GW] [--dns DNS] [--interface IFACE] [--password PASS] [--ssh-key 'ssh-ed25519 ...']"
+  echo "Usage: $0 <image-name> [--ip ADDRESS/PREFIX] [--gateway GW] [--dns DNS] [--interface IFACE] [--hostname NAME] [--password PASS] [--ssh-key 'ssh-ed25519 ...']"
   echo ""
   echo "Available images:"
   for d in "$SCRIPTPATH/images"/*/; do
@@ -51,15 +51,17 @@ NM_GATEWAY=""
 NM_DNS=""
 USER_PASSWORD=""
 SSH_KEY=""
+TARGET_HOSTNAME=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ip)        NM_ADDRESS="$2";    shift 2 ;;
-    --gateway)   NM_GATEWAY="$2";   shift 2 ;;
-    --dns)       NM_DNS="$2";       shift 2 ;;
-    --interface) NM_INTERFACE="$2"; shift 2 ;;
-    --password)  USER_PASSWORD="$2"; shift 2 ;;
-    --ssh-key)   SSH_KEY="$2";      shift 2 ;;
+    --ip)        NM_ADDRESS="$2";      shift 2 ;;
+    --gateway)   NM_GATEWAY="$2";     shift 2 ;;
+    --dns)       NM_DNS="$2";         shift 2 ;;
+    --interface) NM_INTERFACE="$2";   shift 2 ;;
+    --hostname)  TARGET_HOSTNAME="$2"; shift 2 ;;
+    --password)  USER_PASSWORD="$2";  shift 2 ;;
+    --ssh-key)   SSH_KEY="$2";        shift 2 ;;
     *) echo "[ERROR]: Unknown flag: $1"; exit 1 ;;
   esac
 done
@@ -131,32 +133,40 @@ if [[ -n $SSH_KEY ]]; then
   echo "PUBKEY_SSH_FIRST_USER=\"$SSH_KEY\"" >> "$PIGEN_DIR/config"
   echo "[INFO]: SSH public key injected for first user."
 fi
+if [[ -n $TARGET_HOSTNAME ]]; then
+  echo "TARGET_HOSTNAME=\"$TARGET_HOSTNAME\"" >> "$PIGEN_DIR/config"
+  echo "[INFO]: Hostname overridden to: $TARGET_HOSTNAME"
+fi
 
 if [[ -d $IMAGE_DIR/stage-custom ]]; then
   echo "[INFO]: Copying stage-custom for '$IMAGE_NAME'..."
   cp -r "$IMAGE_DIR/stage-custom" "$PIGEN_DIR/stage-custom"
 
-  # Render 01-run-chroot.sh.tpl if it exists
-  TEMPLATE="$IMAGE_DIR/stage-custom/00-config/01-run-chroot.sh.tpl"
-  RENDERED="$PIGEN_DIR/stage-custom/00-config/01-run-chroot.sh"
+  # Render any *.sh.tpl files in stage-custom/00-config/
+  # Templates are removed from the pi-gen copy (not valid stage files) and
+  # rendered in-place when --ip is provided. Currently used for static IP config.
+  for tpl in "$IMAGE_DIR/stage-custom/00-config/"*.sh.tpl; do
+    [[ -f "$tpl" ]] || continue
+    tpl_basename=$(basename "$tpl")
+    rendered_basename="${tpl_basename%.tpl}"
+    rendered="$PIGEN_DIR/stage-custom/00-config/$rendered_basename"
 
-  # Remove the template from the pi-gen copy (it's not a valid stage file)
-  rm -f "$PIGEN_DIR/stage-custom/00-config/01-run-chroot.sh.tpl"
+    # Remove the unrendered template from the pi-gen copy
+    rm -f "$PIGEN_DIR/stage-custom/00-config/$tpl_basename"
 
-  if [[ -f $TEMPLATE ]]; then
     if [[ -n $NM_ADDRESS ]]; then
-      echo "[INFO]: Rendering static IP config: $NM_ADDRESS on $NM_INTERFACE via $NM_GATEWAY"
+      echo "[INFO]: Rendering $tpl_basename → $rendered_basename (IP: $NM_ADDRESS on $NM_INTERFACE via $NM_GATEWAY)"
       sed \
         -e "s|@@NM_INTERFACE@@|$NM_INTERFACE|g" \
         -e "s|@@NM_ADDRESS@@|$NM_ADDRESS|g" \
         -e "s|@@NM_GATEWAY@@|$NM_GATEWAY|g" \
         -e "s|@@NM_DNS@@|${NM_DNS:-$NM_GATEWAY}|g" \
-        "$TEMPLATE" > "$RENDERED"
-      chmod +x "$RENDERED"
+        "$tpl" > "$rendered"
+      chmod +x "$rendered"
     else
-      echo "[INFO]: No --ip provided; skipping static IP (DHCP will be used)."
+      echo "[INFO]: No --ip provided; skipping $tpl_basename (DHCP will be used)."
     fi
-  fi
+  done
 fi
 
 ###
