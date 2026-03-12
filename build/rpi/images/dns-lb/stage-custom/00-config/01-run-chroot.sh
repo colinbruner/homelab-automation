@@ -26,10 +26,9 @@ apt-get update -y
 apt-get install -y caddy
 
 ###############################################################################
-# Install Technitium DNS Server
+# Technitium DNS Server is intentionally NOT installed here.
 #
-# The install script handles both fresh installs and in-place upgrades.
-# The dns service is enabled but won't start until first boot.
-# Ansible manages DNS configuration (zones, settings, clustering) post-boot.
+# The Technitium installer requires a running systemd (PID 1), which is not
+# present in a pi-gen chroot. Installation is handled post-boot by Ansible:
+#   ansible/dns-lb/roles/dns/tasks/install.yml
 ###############################################################################
-curl -sSL https://download.technitium.com/dns/install.sh | bash
