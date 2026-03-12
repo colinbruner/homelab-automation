@@ -14,3 +14,8 @@
   roles:
     - role: dns
       become: true
+      tags: dns
+
+    - role: rpi-lb
+      become: true
+      tags: lb
