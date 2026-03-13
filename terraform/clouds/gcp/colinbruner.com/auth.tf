@@ -21,12 +21,16 @@ module "gh_oidc" {
     "google.subject"             = "assertion.sub"
   }
 
-  # NOTE: Can allow for multiple mappings in the event multiple 
+  # NOTE: Can allow for multiple mappings in the event multiple
   # repos need access to GCP resources
   sa_mapping = {
     "svc-gha-runners" = {
       sa_name   = "projects/${var.project_id}/serviceAccounts/svc-gha-runner@${var.project_id}.iam.gserviceaccount.com"
       attribute = "attribute.repository/colinbruner/colinbruner.com"
+    }
+    "svc-gha-appliance-tracker" = {
+      sa_name   = "projects/${var.project_id}/serviceAccounts/svc-gha-appliance-tracker@${var.project_id}.iam.gserviceaccount.com"
+      attribute = "attribute.repository/colinbruner/appliance-tracker"
     }
   }
 }
