@@ -168,7 +168,8 @@ services:
     network_mode: host
 
   watchtower:
-    image: containrrr/watchtower
+    # NOTE: containrrr/watchtower is not compatible with modern Docker APIs
+    image: nickfedor/watchtower
     container_name: watchtower
     restart: unless-stopped
     volumes:

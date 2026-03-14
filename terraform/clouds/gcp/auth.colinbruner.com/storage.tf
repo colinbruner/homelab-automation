@@ -48,23 +48,18 @@ resource "google_storage_bucket" "backups" {
 }
 
 # ---------------------------------------------------------------------------
-# IAM — VM SA needs both create and get on bucket objects.
+# IAM — VM SA needs objectAdmin on bucket objects.
 #
-# objectCreator alone (storage.objects.create) is insufficient: gcloud storage cp
-# also requires storage.objects.get to handle checksums and resumable upload state
-# against the existing versioned object at the destination path.
+# objectAdmin (storage.objects.*) is required because gcloud storage cp overwrites
+# an existing versioned object, which requires storage.objects.delete even though
+# the old version is only archived (not permanently removed). objectCreator +
+# objectViewer is insufficient for overwrites on versioned buckets.
 #
-# objectViewer adds storage.objects.get + storage.objects.list.
-# Neither role grants delete — lifecycle-based deletion is handled by GCS itself.
+# Lifecycle-based deletion of old versions is handled by GCS itself and does not
+# require the SA to hold delete permission.
 # ---------------------------------------------------------------------------
-resource "google_storage_bucket_iam_member" "auth_colinbruner_backup_writer" {
+resource "google_storage_bucket_iam_member" "auth_colinbruner_backup_admin" {
   bucket = google_storage_bucket.backups.name
-  role   = "roles/storage.objectCreator"
-  member = "serviceAccount:${google_service_account.this.email}"
-}
-
-resource "google_storage_bucket_iam_member" "auth_colinbruner_backup_viewer" {
-  bucket = google_storage_bucket.backups.name
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.this.email}"
 }
