@@ -115,6 +115,11 @@ echo "[INFO]: Cloning pi-gen (arm64 branch)..."
 rm -rf "$PIGEN_DIR"
 git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git "$PIGEN_DIR"
 
+# stage2 has EXPORT_IMAGE by default which would produce a plain Lite image.
+# We export from stage-custom instead (which builds on top of stage2), so mark
+# stage2 as skip-images to suppress the unwanted intermediate image.
+touch "$PIGEN_DIR/stage2/SKIP_IMAGES"
+
 ###
 # Inject config and custom stage
 ###
