@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Technitium DNS Server certificate deploy hook.
+# Managed by Ansible — do not edit manually.
+#
+# Runs after certbot successfully renews any certificate on this host.
+# Converts the renewed PEM cert to PFX and restarts Technitium to load it.
+set -euo pipefail
+
+# Only act when the renewed cert is for this node's domain.
+if [[ "${RENEWED_LINEAGE}" != "/etc/letsencrypt/live/{{ technitium_cert_domain }}" ]]; then
+  exit 0
+fi
+
+openssl pkcs12 -export \
+  -in "${RENEWED_LINEAGE}/fullchain.pem" \
+  -inkey "${RENEWED_LINEAGE}/privkey.pem" \
+  -out "{{ technitium_cert_pfx_path }}" \
+  -passout "pass:{{ technitium_cert_pfx_password }}"
+
+chmod 640 "{{ technitium_cert_pfx_path }}"
+
+systemctl restart {{ technitium_service }}

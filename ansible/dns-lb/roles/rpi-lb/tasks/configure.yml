@@ -28,7 +28,7 @@
     owner: caddy
     group: caddy
     mode: "0644"
-  notify: reload caddy
+  notify: restart caddy
 
 - name: template caddy environment file
   ansible.builtin.template:
@@ -56,6 +56,13 @@
   notify:
     - reload systemd
     - restart caddy
+
+# Flush here so daemon-reload runs (picks up EnvironmentFile drop-in) and caddy
+# restarts with env vars loaded — before the "enable and start" task below.
+# On initial install this prevents "reload caddy" failing against a caddy process
+# that was started without the env vars.
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: enable and start caddy
   ansible.builtin.service:

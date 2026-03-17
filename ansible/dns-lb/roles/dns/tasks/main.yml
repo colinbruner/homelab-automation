@@ -5,5 +5,11 @@
 - name: install
   ansible.builtin.include_tasks: install.yml
 
+- name: cert
+  ansible.builtin.include_tasks: cert.yml
+
+- name: configure
+  ansible.builtin.include_tasks: configure.yml
+
 - name: backup
   ansible.builtin.include_tasks: backup.yml

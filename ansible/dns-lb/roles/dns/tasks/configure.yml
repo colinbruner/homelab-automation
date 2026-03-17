@@ -1,0 +1,56 @@
+---
+# Configures Technitium via its HTTP API after installation.
+# Prerequisites:
+#   - technitium_admin_password must be set (via vars, e.g. from 1Password)
+#   - Admin password must already be set on the Technitium instance
+#     (on a fresh install, set it once via the web UI, then store in 1Password)
+
+- name: wait for technitium http api to be ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ technitium_http_port }}"
+    delay: 2
+    timeout: 30
+
+- name: login to technitium api
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/user/login"
+    method: GET
+    body_format: form-urlencoded
+    body:
+      user: "{{ technitium_admin_user }}"
+      pass: "{{ technitium_admin_password }}"
+    return_content: true
+    status_code: 200
+  register: technitium_login
+  no_log: true
+
+- name: get current web service settings
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/webService/get"
+    method: GET
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_login.json.token }}"
+    return_content: true
+    status_code: 200
+  register: technitium_ws_settings
+  no_log: true
+
+- name: enable https on technitium web service
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/webService/update"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_login.json.token }}"
+      enableTls: "true"
+      tlsPort: "{{ technitium_https_port }}"
+      tlsCertificatePath: "{{ technitium_cert_pfx_path }}"
+      tlsCertificatePassword: "{{ technitium_cert_pfx_password }}"
+    return_content: true
+    status_code: 200
+  when: >
+    not (technitium_ws_settings.json.response.enableTls | default(false)) or
+    (technitium_ws_settings.json.response.tlsCertificatePath | default('')) != technitium_cert_pfx_path
+  no_log: true

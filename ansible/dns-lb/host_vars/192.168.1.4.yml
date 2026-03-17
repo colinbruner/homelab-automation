@@ -1,0 +1,5 @@
+---
+# FQDN for this node's Let's Encrypt certificate.
+# Must match the hostname Technitium will use after cluster initialization
+# (i.e. <hostname>.<cluster-domain> from the cluster init dialog).
+technitium_cert_domain: "ns2.colinbruner.com"

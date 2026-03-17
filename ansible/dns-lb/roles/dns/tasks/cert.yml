@@ -1,0 +1,62 @@
+---
+- name: install certbot and cloudflare dns plugin
+  ansible.builtin.apt:
+    pkg:
+      - certbot
+      - python3-certbot-dns-cloudflare
+    state: present
+
+- name: install cloudflare credentials for certbot
+  ansible.builtin.template:
+    src: cloudflare.ini.j2
+    dest: "{{ technitium_cloudflare_credentials }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: obtain lets encrypt certificate
+  ansible.builtin.command:
+    cmd: >
+      certbot certonly
+      --non-interactive
+      --agree-tos
+      --email {{ technitium_cert_email }}
+      --dns-cloudflare
+      --dns-cloudflare-credentials {{ technitium_cloudflare_credentials }}
+      --dns-cloudflare-propagation-seconds {{ technitium_dns_propagation_seconds }}
+      -d {{ technitium_cert_domain }}
+    creates: "/etc/letsencrypt/live/{{ technitium_cert_domain }}/fullchain.pem"
+
+- name: install post-renewal deploy hook
+  ansible.builtin.template:
+    src: technitium-deploy.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/deploy/technitium.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+# Initial PFX conversion — on renewals the deploy hook handles this.
+- name: convert cert to pfx for technitium
+  ansible.builtin.command:
+    cmd: >
+      openssl pkcs12 -export
+      -in /etc/letsencrypt/live/{{ technitium_cert_domain }}/fullchain.pem
+      -inkey /etc/letsencrypt/live/{{ technitium_cert_domain }}/privkey.pem
+      -out {{ technitium_cert_pfx_path }}
+      -passout pass:{{ technitium_cert_pfx_password }}
+    creates: "{{ technitium_cert_pfx_path }}"
+  no_log: true
+
+- name: set permissions on pfx
+  ansible.builtin.file:
+    path: "{{ technitium_cert_pfx_path }}"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: enable certbot renewal timer
+  ansible.builtin.service:
+    name: certbot.timer
+    enabled: true
+    state: started

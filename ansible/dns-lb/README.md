@@ -68,6 +68,7 @@ ansible_user=pi
 | `op://lab/test/client-id` | `pocket_id_client_id` | Pocket ID OIDC client ID |
 | `op://lab/test/client-secret` | `pocket_id_client_secret` | Pocket ID OIDC client secret |
 | `op://lab/caddy-lb/key` | `caddy_auth_key` | JWT signing key for Caddy auth cookies (32+ chars) |
+| `op://lab/technitium/password` | `technitium_admin_password` | Technitium DNS admin password (set manually on first login) |
 
 ---
 
