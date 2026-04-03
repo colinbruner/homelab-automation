@@ -86,6 +86,11 @@ variable "grafana_service_url" {
   type        = string
 }
 
+variable "dashboard_service_url" {
+  description = "Internal URL cloudflared uses to reach the dashboard, e.g. https://dashboard-internal.colinbruner.com"
+  type        = string
+}
+
 variable "session_duration" {
   description = "Cloudflare Access session duration before re-authentication is required"
   type        = string

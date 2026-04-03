@@ -64,6 +64,12 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
       service  = var.grafana_service_url
     }
 
+    # Dashboard — Access-protected
+    ingress_rule {
+      hostname = "dashboard.${var.cloudflare_domain}"
+      service  = var.dashboard_service_url
+    }
+
     # Catch-all — return 404 for any unmatched hostname
     ingress_rule {
       service = "http_status:404"

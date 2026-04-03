@@ -71,3 +71,13 @@ output "grafana_access_application_id" {
   description = "Cloudflare Access application ID for Grafana"
   value       = cloudflare_zero_trust_access_application.grafana.id
 }
+
+output "dashboard_url" {
+  description = "Public URL for Dashboard (Access-protected)"
+  value       = "https://dashboard.${var.cloudflare_domain}"
+}
+
+output "dashboard_access_application_id" {
+  description = "Cloudflare Access application ID for Dashboard"
+  value       = cloudflare_zero_trust_access_application.dashboard.id
+}

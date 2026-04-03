@@ -39,6 +39,14 @@ resource "cloudflare_record" "grafana" {
   proxied = true
 }
 
+resource "cloudflare_record" "dashboard" {
+  zone_id = var.cloudflare_zone_id
+  name    = "dashboard"
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.homelab.id}.cfargotunnel.com"
+  proxied = true
+}
+
 # ---------------------------------------------------------------------------
 # Access applications — protect public hostnames with Pocket ID authentication
 #
@@ -89,6 +97,17 @@ resource "cloudflare_zero_trust_access_application" "grafana" {
   auto_redirect_to_identity = true
 }
 
+resource "cloudflare_zero_trust_access_application" "dashboard" {
+  account_id = var.cloudflare_account_id
+  name       = "Dashboard"
+  domain     = "dashboard.${var.cloudflare_domain}"
+  type       = "self_hosted"
+
+  session_duration          = var.session_duration
+  allowed_idps              = [cloudflare_zero_trust_access_identity_provider.pocket_id.id]
+  auto_redirect_to_identity = true
+}
+
 # ---------------------------------------------------------------------------
 # Access policies — allow any user authenticated via Pocket ID
 # ---------------------------------------------------------------------------
@@ -131,6 +150,18 @@ resource "cloudflare_zero_trust_access_policy" "prometheus" {
 resource "cloudflare_zero_trust_access_policy" "grafana" {
   account_id     = var.cloudflare_account_id
   application_id = cloudflare_zero_trust_access_application.grafana.id
+  name           = "Allow Pocket ID users"
+  precedence     = 1
+  decision       = "allow"
+
+  include {
+    login_method = [cloudflare_zero_trust_access_identity_provider.pocket_id.id]
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "dashboard" {
+  account_id     = var.cloudflare_account_id
+  application_id = cloudflare_zero_trust_access_application.dashboard.id
   name           = "Allow Pocket ID users"
   precedence     = 1
   decision       = "allow"
