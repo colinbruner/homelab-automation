@@ -52,6 +52,7 @@
 }
 
 {% for backend in caddy_backends %}
+{% set upstream_str = backend.upstreams | join(' ') if backend.upstreams is defined else backend.upstream %}
 # {{ backend.name }}
 {{ backend.fqdn }} {
 	tls {
@@ -64,17 +65,25 @@
 	route * {
 		authorize with protected
 {% if backend.tls_skip_verify | default(false) %}
-		reverse_proxy {{ backend.upstream }} {
+		reverse_proxy {{ upstream_str }} {
 			transport http {
 				tls_insecure_skip_verify
 			}
 		}
 {% else %}
-		reverse_proxy {{ backend.upstream }}
+		reverse_proxy {{ upstream_str }}
 {% endif %}
 	}
 {% else %}
-	reverse_proxy {{ backend.upstream }}
+{% if backend.tls_skip_verify | default(false) %}
+	reverse_proxy {{ upstream_str }} {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+{% else %}
+	reverse_proxy {{ upstream_str }}
+{% endif %}
 {% endif %}
 }
 

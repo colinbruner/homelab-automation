@@ -1,5 +1,3 @@
 ---
 collections:
-  # authorized_key module — 1.5.4+ fixes deprecation warning for to_native import
   - name: ansible.posix
-    version: ">=1.5.4"

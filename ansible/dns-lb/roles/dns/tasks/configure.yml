@@ -1,56 +1,86 @@
 ---
-# Configures Technitium via its HTTP API after installation.
-# Prerequisites:
-#   - technitium_admin_password must be set (via vars, e.g. from 1Password)
-#   - Admin password must already be set on the Technitium instance
-#     (on a fresh install, set it once via the web UI, then store in 1Password)
+# Configures Technitium via its HTTP API.
+# Requires technitium_token fact set by bootstrap.yml.
+#
+# validate_certs: false is required on all uri calls — when HTTP→HTTPS redirect
+# is enabled, the uri module follows the 302 to https://127.0.0.1:<port> which
+# fails cert validation (cert is for the node FQDN, not 127.0.0.1). All calls
+# are localhost-only so skipping validation is safe.
 
-- name: wait for technitium http api to be ready
-  ansible.builtin.wait_for:
-    host: 127.0.0.1
-    port: "{{ technitium_http_port }}"
-    delay: 2
-    timeout: 30
-
-- name: login to technitium api
+- name: get current settings
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ technitium_http_port }}/api/user/login"
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/get"
     method: GET
     body_format: form-urlencoded
     body:
-      user: "{{ technitium_admin_user }}"
-      pass: "{{ technitium_admin_password }}"
+      token: "{{ technitium_token }}"
+    validate_certs: false
+    follow_redirects: all
     return_content: true
     status_code: 200
-  register: technitium_login
-  no_log: true
-
-- name: get current web service settings
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/webService/get"
-    method: GET
-    body_format: form-urlencoded
-    body:
-      token: "{{ technitium_login.json.token }}"
-    return_content: true
-    status_code: 200
-  register: technitium_ws_settings
-  no_log: true
+  register: technitium_settings
+  #no_log: true
 
 - name: enable https on technitium web service
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/webService/update"
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/set"
     method: POST
     body_format: form-urlencoded
     body:
-      token: "{{ technitium_login.json.token }}"
-      enableTls: "true"
-      tlsPort: "{{ technitium_https_port }}"
-      tlsCertificatePath: "{{ technitium_cert_pfx_path }}"
-      tlsCertificatePassword: "{{ technitium_cert_pfx_password }}"
+      token: "{{ technitium_token }}"
+      webServiceEnableTls: "true"
+      webServiceHttpToTlsRedirect: "true"
+      webServiceTlsPort: "{{ technitium_https_port }}"
+      webServiceTlsCertificatePath: "{{ technitium_cert_pfx_path }}"
+      webServiceTlsCertificatePassword: "{{ technitium_cert_pfx_password }}"
+    validate_certs: false
+    follow_redirects: all
     return_content: true
     status_code: 200
   when: >
-    not (technitium_ws_settings.json.response.enableTls | default(false)) or
-    (technitium_ws_settings.json.response.tlsCertificatePath | default('')) != technitium_cert_pfx_path
-  no_log: true
+    not (technitium_settings.json.response.webServiceEnableTls | default(false)) or
+    (technitium_settings.json.response.webServiceTlsCertificatePath | default('')) != technitium_cert_pfx_path
+  #no_log: true
+
+# Create a local primary zone so both Technitium instances authoritatively resolve
+# the node FQDNs and shared dns. entry to private IPs (split-horizon).
+- name: create local zone for node fqdn resolution
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/zones/create"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_token }}"
+      zone: "{{ technitium_local_zone }}"
+      type: Primary
+    validate_certs: false
+    follow_redirects: all
+    return_content: true
+    status_code: 200
+  register: zone_create_result
+  failed_when:
+    - zone_create_result.json.status == "error"
+    - '"already exists" not in (zone_create_result.json.errorMessage | default(""))'
+  #no_log: true
+  when: technitium_local_records | length > 0
+
+- name: add local dns records
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ technitium_http_port }}/api/zones/records/add"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_token }}"
+      zone: "{{ technitium_local_zone }}"
+      domain: "{{ item.domain }}"
+      type: "{{ item.type }}"
+      ttl: 300
+      rdata: "{{ item.rdata }}"
+      overwrite: "true"
+    validate_certs: false
+    follow_redirects: all
+    return_content: true
+    status_code: 200
+  loop: "{{ technitium_local_records }}"
+  #no_log: true
+  when: technitium_local_records | length > 0

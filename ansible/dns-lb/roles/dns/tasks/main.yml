@@ -5,6 +5,9 @@
 - name: install
   ansible.builtin.include_tasks: install.yml
 
+- name: bootstrap
+  ansible.builtin.include_tasks: bootstrap.yml
+
 - name: cert
   ansible.builtin.include_tasks: cert.yml
 

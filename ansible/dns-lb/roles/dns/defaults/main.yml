@@ -22,6 +22,12 @@ technitium_cloudflare_credentials: "/etc/letsencrypt/cloudflare.ini"
 # Extra seconds to wait for Cloudflare DNS propagation before ACME validation
 technitium_dns_propagation_seconds: 30
 
+# Local DNS zone and records created on each Technitium instance.
+# Provides split-horizon resolution so node FQDNs and the shared dns. entry
+# resolve to private IPs on this network.
+technitium_local_zone: ""
+technitium_local_records: []
+
 # NFS backup
 nfs_server: "192.168.10.5"
 nfs_export: "/var/nfs/shared/homelab"
