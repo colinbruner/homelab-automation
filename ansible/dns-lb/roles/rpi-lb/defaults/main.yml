@@ -49,6 +49,14 @@ caddy_backends:
     oidc_protected: true
     tls_skip_verify: true
 
+  - name: dashboard
+    fqdn: "dashboard.{{ caddy_base_domain }}"
+    upstream: "http://192.168.10.50:30333"
+
+  - name: dashboard-internal
+    fqdn: "dashboard-internal.{{ caddy_base_domain }}"
+    upstream: "http://192.168.10.50:30333"
+
   - name: technitium-dns
     fqdn: "dns.{{ caddy_base_domain }}"
     upstreams:

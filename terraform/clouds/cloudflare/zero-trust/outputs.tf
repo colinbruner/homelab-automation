@@ -52,26 +52,6 @@ output "argocd_access_application_id" {
   value       = cloudflare_zero_trust_access_application.argocd.id
 }
 
-output "prometheus_url" {
-  description = "Public URL for Prometheus (Access-protected)"
-  value       = "https://prometheus.${var.cloudflare_domain}"
-}
-
-output "grafana_url" {
-  description = "Public URL for Grafana (Access-protected)"
-  value       = "https://grafana.${var.cloudflare_domain}"
-}
-
-output "prometheus_access_application_id" {
-  description = "Cloudflare Access application ID for Prometheus"
-  value       = cloudflare_zero_trust_access_application.prometheus.id
-}
-
-output "grafana_access_application_id" {
-  description = "Cloudflare Access application ID for Grafana"
-  value       = cloudflare_zero_trust_access_application.grafana.id
-}
-
 output "dashboard_url" {
   description = "Public URL for Dashboard (Access-protected)"
   value       = "https://dashboard.${var.cloudflare_domain}"

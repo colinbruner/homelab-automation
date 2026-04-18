@@ -76,16 +76,6 @@ variable "argocd_service_url" {
   type        = string
 }
 
-variable "prometheus_service_url" {
-  description = "Internal URL cloudflared uses to reach Prometheus, e.g. http://192.168.10.x:9090"
-  type        = string
-}
-
-variable "grafana_service_url" {
-  description = "Internal URL cloudflared uses to reach Grafana, e.g. http://192.168.10.x:3000"
-  type        = string
-}
-
 variable "dashboard_service_url" {
   description = "Internal URL cloudflared uses to reach the dashboard, e.g. https://dashboard-internal.colinbruner.com"
   type        = string

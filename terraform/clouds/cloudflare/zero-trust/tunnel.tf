@@ -21,11 +21,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared" "homelab" {
 # ---------------------------------------------------------------------------
 # Tunnel ingress rules
 #
-# Public hostnames (prometheus, grafana) are protected by Cloudflare Access
-# (see access.tf). Internal hostnames (*-internal) bypass Access and are
-# reachable only via WARP-connected clients — WARP enforces network-level
-# access control so no additional auth layer is needed for service-to-service
-# or internal tooling use cases.
+# Public hostnames are protected by Cloudflare Access (see access.tf).
 # ---------------------------------------------------------------------------
 resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
   account_id = var.cloudflare_account_id
@@ -50,18 +46,6 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab" {
       origin_request {
         no_tls_verify = true
       }
-    }
-
-    # Prometheus — public (Access-protected) and internal (WARP-only)
-    ingress_rule {
-      hostname = "prometheus.${var.cloudflare_domain}"
-      service  = var.prometheus_service_url
-    }
-
-    # Grafana — public (Access-protected) and internal (WARP-only)
-    ingress_rule {
-      hostname = "grafana.${var.cloudflare_domain}"
-      service  = var.grafana_service_url
     }
 
     # Dashboard — Access-protected
