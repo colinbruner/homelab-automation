@@ -1,5 +1,5 @@
 ###
-# WIF binding for the appliance-tracker GitHub Actions workflow.
+# WIF binding for the Home GitHub Actions workflow.
 # The WIF pool/provider itself is managed in the colinbruner.com workspace.
 ###
 
@@ -12,10 +12,10 @@ data "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_provider_id = "github-provider"
 }
 
-resource "google_service_account_iam_member" "gha_appliance_tracker_wif" {
-  service_account_id = google_service_account.gha_appliance_tracker.name
+resource "google_service_account_iam_member" "gha_home_wif" {
+  service_account_id = google_service_account.gha_home_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${data.google_iam_workload_identity_pool.github.name}/attribute.repository/colinbruner/appliance-tracker"
+  member             = "principalSet://iam.googleapis.com/${data.google_iam_workload_identity_pool.github.name}/attribute.repository/colinbruner/Home"
 }
 
 output "workload_identity_provider" {
