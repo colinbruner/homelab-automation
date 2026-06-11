@@ -1,9 +1,9 @@
 ###
-# appliances.bruner.family
+# home.bruner.family
 ###
 
-resource "google_storage_bucket" "appliances" {
-  name     = "appliances.bruner.family"
+resource "google_storage_bucket" "home" {
+  name     = "home.bruner.family"
   location = "US-CENTRAL1"
 
   uniform_bucket_level_access = true
@@ -15,8 +15,8 @@ resource "google_storage_bucket" "appliances" {
 }
 
 # Allow public read access for static site hosting
-resource "google_storage_bucket_iam_member" "appliances_public_read" {
-  bucket = google_storage_bucket.appliances.name
+resource "google_storage_bucket_iam_member" "home_public_read" {
+  bucket = google_storage_bucket.home.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }

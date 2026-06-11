@@ -1,5 +1,5 @@
-resource "supabase_project" "appliance_tracker" {
-  name              = "appliance-tracker"
+resource "supabase_project" "home" {
+  name              = "home"
   organization_id   = var.organization_id
   database_password = var.database_password
   region            = var.region
@@ -11,11 +11,11 @@ resource "supabase_project" "appliance_tracker" {
 
 # Auth settings: enable external OIDC provider (Pocket ID) and disable
 # Supabase's built-in email/password auth since the app uses PKCE + OIDC.
-resource "supabase_settings" "appliance_tracker" {
-  project_ref = supabase_project.appliance_tracker.id
+resource "supabase_settings" "home" {
+  project_ref = supabase_project.home.id
 
   auth = jsonencode({
-    site_url                  = "https://appliances.bruner.family"
+    site_url                  = "https://home.bruner.family"
     additional_redirect_urls  = []
     jwt_expiry                = 3600
     enable_signup             = true
