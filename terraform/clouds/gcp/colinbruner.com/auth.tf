@@ -12,7 +12,7 @@ module "gh_oidc" {
   provider_id           = "github-provider"
   provider_display_name = "github-provider"
 
-  attribute_condition = "assertion.repository_owner == \"colinbruner\""
+  attribute_condition = "assertion.repository_owner in [\"colinbruner\", \"Bruner-Family\"]"
   attribute_mapping = {
     "attribute.repository_owner" = "assertion.repository_owner"
     "attribute.actor"            = "assertion.actor"
