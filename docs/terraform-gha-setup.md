@@ -18,7 +18,12 @@ gcloud storage buckets update gs://bruner-infra --versioning
 ## 2. Bootstrap GCP CI identity (apply `clouds/gcp/iam` locally)
 
 CI cannot grant itself its own permissions, so the first apply of the new
-`gha-terraform.tf` resources must happen locally:
+`gha-terraform.tf` resources must happen locally. This apply also enables
+the **Cloud Resource Manager API** and **IAM API** (`google_project_service`
+resources) — both are project-wide prerequisites for managing IAM bindings
+and service accounts and must be enabled before *any* of this can succeed.
+If the project predates this ADR, these were likely enabled manually before
+this point; the Terraform resources just codify that going forward.
 
 ```bash
 gcloud auth application-default login

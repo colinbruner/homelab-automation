@@ -4,6 +4,20 @@
 # colinbruner.com workspace.
 ###
 
+# Required by every resource below: Resource Manager for project IAM
+# bindings, IAM API for service accounts and SA IAM policies.
+resource "google_project_service" "cloudresourcemanager" {
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "iam" {
+  project            = var.project_id
+  service            = "iam.googleapis.com"
+  disable_on_destroy = false
+}
+
 data "google_iam_workload_identity_pool" "github" {
   project                   = var.project_id
   workload_identity_pool_id = "github-actions"
@@ -19,6 +33,11 @@ resource "google_service_account" "gha_terraform" {
   project      = var.project_id
   account_id   = "svc-gha-terraform"
   display_name = "GitHub Actions Terraform Runner"
+
+  depends_on = [
+    google_project_service.cloudresourcemanager,
+    google_project_service.iam,
+  ]
 }
 
 resource "google_service_account_iam_member" "gha_terraform_wif" {
