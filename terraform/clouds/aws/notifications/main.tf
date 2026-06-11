@@ -1,7 +1,7 @@
 # SES domain identity, DKIM, and MAIL FROM
 module "ses" {
-  source               = "../../../modules/aws/ses"
-  domain_name          = var.domain_name
+  source              = "../../../modules/aws/ses"
+  domain_name         = var.domain_name
   mail_from_subdomain = var.mail_from_subdomain
 }
 

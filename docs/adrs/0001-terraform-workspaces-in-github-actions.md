@@ -1,6 +1,6 @@
 # ADR 0001: Running Multiple Terraform Workspaces Safely in GitHub Actions
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-06-10
 
 ## Context
@@ -131,12 +131,15 @@ No long-lived cloud keys are stored in GitHub.
 - **AWS**: a GitHub OIDC provider + IAM role in the AWS account, assumed via
   `aws-actions/configure-aws-credentials`, trust policy scoped to this repo
   and (for apply) the `main` ref.
-- **Cloudflare / Supabase**: these providers use API tokens, not OIDC. Tokens
-  are stored as GitHub Actions secrets (`CLOUDFLARE_API_TOKEN`,
-  `SUPABASE_ACCESS_TOKEN`), scoped to the `production` environment so they
-  are only exposed to apply jobs on `main`; PR plans use a read-only token
-  where the provider supports it. 1Password remains the source of truth;
-  GitHub secrets are a synced copy.
+- **Cloudflare / Supabase**: these providers use API tokens, not OIDC.
+  Each workspace's required variables (tokens included) live in a
+  per-workspace repository secret (`TFVARS_<WORKSPACE_KEY>`) holding tfvars
+  content, which CI writes to `ci.auto.tfvars` before running. These are
+  repository-level rather than `production`-environment-scoped because PR
+  plans also need provider credentials to refresh state; the exposure is
+  acceptable since fork PRs never receive secrets and this is a
+  single-operator repo. 1Password remains the source of truth; GitHub
+  secrets are a synced copy.
 
 **Bootstrap note**: the IAM resources that grant CI its access (in
 `clouds/gcp/iam` and `clouds/gcp/colinbruner.com`) must be applied locally

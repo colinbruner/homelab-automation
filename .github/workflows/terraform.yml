@@ -1,0 +1,327 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  # Workspaces are discovered, never hardcoded: any directory with a
+  # backend.tf is a workspace (ADR 0001). Only workspaces touched by the
+  # change run; module or pipeline changes fan out to all of them.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      workspaces: ${{ steps.discover.outputs.workspaces }}
+      any: ${{ steps.discover.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Discover affected workspaces
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t all_workspaces < <(
+            find terraform -name backend.tf -not -path '*/.terraform/*' -printf '%h\n' | sort
+          )
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}"...HEAD)
+            run_all=false
+          else
+            before="${{ github.event.before }}"
+            if [[ "$before" != 0000000000000000000000000000000000000000 ]] && git cat-file -e "$before" 2>/dev/null; then
+              changed=$(git diff --name-only "$before" "${{ github.sha }}")
+              run_all=false
+            else
+              # Force push or unknown base — be safe and run everything.
+              changed=""
+              run_all=true
+            fi
+          fi
+
+          # Shared modules and pipeline changes affect every workspace.
+          if grep -qE '^(terraform/modules/|terraform/\.terraform-version|\.github/workflows/terraform\.yml)' <<<"$changed"; then
+            run_all=true
+          fi
+
+          selected=()
+          for ws in "${all_workspaces[@]}"; do
+            if [[ "$run_all" == true ]] || grep -q "^$ws/" <<<"$changed"; then
+              selected+=("$ws")
+            fi
+          done
+
+          if [[ ${#selected[@]} -eq 0 ]]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "workspaces=[]" >> "$GITHUB_OUTPUT"
+            echo "No affected workspaces."
+            exit 0
+          fi
+
+          # name: path relative to terraform/ (e.g. clouds/gcp/backups)
+          # key:  uppercased name for concurrency groups and per-workspace
+          #       secret lookup (e.g. CLOUDS_GCP_BACKUPS -> TFVARS_CLOUDS_GCP_BACKUPS)
+          workspaces=$(printf '%s\n' "${selected[@]}" | jq -Rc '{
+              dir:  .,
+              name: (. | sub("^terraform/"; "")),
+              key:  (. | sub("^terraform/"; "") | ascii_upcase | gsub("[^A-Z0-9]"; "_"))
+            }' | jq -sc .)
+
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          echo "workspaces=$workspaces" >> "$GITHUB_OUTPUT"
+          echo "Affected workspaces: $workspaces"
+
+  # Cheap whole-tree checks that need no cloud credentials. Validate uses
+  # `init -backend=false` so it never touches state.
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned Terraform version
+        id: tf
+        run: echo "version=$(cat terraform/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.tf.outputs.version }}
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff terraform/
+
+      - name: terraform validate (all workspaces)
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r ws; do
+            echo "::group::validate $ws"
+            terraform -chdir="$ws" init -backend=false -input=false > /dev/null
+            terraform -chdir="$ws" validate || failed=1
+            echo "::endgroup::"
+          done < <(find terraform -name backend.tf -not -path '*/.terraform/*' -printf '%h\n' | sort)
+          exit "$failed"
+
+  plan:
+    if: github.event_name == 'pull_request' && needs.discover.outputs.any == 'true'
+    needs: discover
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.discover.outputs.workspaces) }}
+    # Newer pushes to the same PR supersede in-flight plans of the same
+    # workspace. Cross-PR contention is handled by GCS state locking.
+    concurrency:
+      group: terraform-plan-${{ matrix.workspace.key }}-pr${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned Terraform version
+        id: tf
+        run: echo "version=$(cat terraform/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.tf.outputs.version }}
+          terraform_wrapper: false
+
+      # GCP auth is needed by every workspace: state lives in GCS.
+      - name: Authenticate to GCP (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to AWS (OIDC)
+        if: startsWith(matrix.workspace.name, 'clouds/aws/')
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      # Per-workspace variables come from a TFVARS_<KEY> repository secret
+      # holding tfvars file content (see docs/terraform-gha-setup.md).
+      - name: Write CI tfvars
+        env:
+          TFVARS: ${{ secrets[format('TFVARS_{0}', matrix.workspace.key)] }}
+        run: |
+          if [[ -n "$TFVARS" ]]; then
+            printf '%s\n' "$TFVARS" > "${{ matrix.workspace.dir }}/ci.auto.tfvars"
+          fi
+
+      - name: terraform init
+        run: terraform -chdir=${{ matrix.workspace.dir }} init -input=false
+
+      - name: terraform plan
+        id: plan
+        shell: bash
+        run: |
+          set +e
+          terraform -chdir=${{ matrix.workspace.dir }} plan -no-color -detailed-exitcode -out=tfplan 2>&1 | tee plan-output.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          # 0 = no changes, 2 = changes present, 1 = error
+          [[ "$code" != "1" ]]
+
+      - name: Comment plan on PR
+        if: always() && steps.plan.outcome != 'skipped'
+        uses: actions/github-script@v7
+        env:
+          WORKSPACE: ${{ matrix.workspace.name }}
+          PLAN_EXITCODE: ${{ steps.plan.outputs.exitcode }}
+        with:
+          script: |
+            const fs = require('fs');
+            const workspace = process.env.WORKSPACE;
+            const marker = `<!-- terraform-plan: ${workspace} -->`;
+
+            let plan = '';
+            try { plan = fs.readFileSync('plan-output.txt', 'utf8'); } catch {}
+            const limit = 60000;
+            if (plan.length > limit) {
+              plan = plan.slice(0, limit) + '\n\n... (truncated — see workflow logs for full output)';
+            }
+
+            const status = { '0': '✅ No changes', '2': '📝 Changes pending', '1': '❌ Plan failed' }[process.env.PLAN_EXITCODE] ?? '❌ Plan failed';
+            const body = [
+              marker,
+              `### Terraform plan: \`${workspace}\` — ${status}`,
+              '<details><summary>Show plan output</summary>',
+              '',
+              '```',
+              plan,
+              '```',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }
+
+  apply:
+    if: github.event_name == 'push' && needs.discover.outputs.any == 'true'
+    needs: discover
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.discover.outputs.workspaces) }}
+    # Applies to the same workspace queue and are never cancelled (ADR 0001).
+    concurrency:
+      group: terraform-apply-${{ matrix.workspace.key }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned Terraform version
+        id: tf
+        run: echo "version=$(cat terraform/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.tf.outputs.version }}
+          terraform_wrapper: false
+
+      - name: Authenticate to GCP (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to AWS (OIDC)
+        if: startsWith(matrix.workspace.name, 'clouds/aws/')
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Write CI tfvars
+        env:
+          TFVARS: ${{ secrets[format('TFVARS_{0}', matrix.workspace.key)] }}
+        run: |
+          if [[ -n "$TFVARS" ]]; then
+            printf '%s\n' "$TFVARS" > "${{ matrix.workspace.dir }}/ci.auto.tfvars"
+          fi
+
+      - name: terraform init
+        run: terraform -chdir=${{ matrix.workspace.dir }} init -input=false
+
+      # Re-plan at apply time (ADR 0001), then apply that exact plan file.
+      - name: terraform plan
+        id: plan
+        shell: bash
+        run: |
+          set +e
+          terraform -chdir=${{ matrix.workspace.dir }} plan -no-color -detailed-exitcode -out=tfplan 2>&1 | tee plan-output.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Plan: \`${{ matrix.workspace.name }}\` (exit code $code)"
+            echo '<details><summary>Show plan output</summary>'
+            echo
+            echo '```'
+            tail -c 60000 plan-output.txt
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+          [[ "$code" != "1" ]]
+
+      - name: terraform apply
+        if: steps.plan.outputs.exitcode == '2'
+        shell: bash
+        run: |
+          terraform -chdir=${{ matrix.workspace.dir }} apply -no-color tfplan 2>&1 | tee apply-output.txt
+          {
+            echo "### Apply: \`${{ matrix.workspace.name }}\`"
+            echo '<details><summary>Show apply output</summary>'
+            echo
+            echo '```'
+            tail -c 60000 apply-output.txt
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: No changes
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No changes to apply for ${{ matrix.workspace.name }}."
