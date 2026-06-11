@@ -25,5 +25,5 @@ output "workload_identity_provider" {
 
 output "service_account_email" {
   description = "SA email to impersonate via WIF"
-  value       = google_service_account.gha_appliance_tracker.email
+  value       = google_service_account.gha_home_deployer.email
 }
