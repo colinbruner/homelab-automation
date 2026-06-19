@@ -28,6 +28,10 @@ module "gh_oidc" {
       sa_name   = "projects/${var.project_id}/serviceAccounts/svc-gha-runner@${var.project_id}.iam.gserviceaccount.com"
       attribute = "attribute.repository/colinbruner/colinbruner.com"
     }
+    "svc-gha-home-deployer" = {
+      sa_name   = "projects/${var.project_id}/serviceAccounts/svc-gha-home-deployer@${var.project_id}.iam.gserviceaccount.com"
+      attribute = "attribute.repository/Bruner-Family/Home"
+    }
   }
 }
 
