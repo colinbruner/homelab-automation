@@ -15,7 +15,7 @@ data "google_iam_workload_identity_pool_provider" "github" {
 resource "google_service_account_iam_member" "gha_home_wif" {
   service_account_id = google_service_account.gha_home_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${data.google_iam_workload_identity_pool.github.name}/attribute.repository/colinbruner/Home"
+  member             = "principalSet://iam.googleapis.com/${data.google_iam_workload_identity_pool.github.name}/attribute.repository/bruner-family/Hearth"
 }
 
 output "workload_identity_provider" {
