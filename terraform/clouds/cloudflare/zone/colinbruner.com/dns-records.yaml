@@ -1,0 +1,27 @@
+---
+# hostname -> [ips]
+dns_records:
+  ###
+  # Envoy
+  ###
+  argocd-internal:
+    - 192.168.10.240
+  ###
+  # Load Balanced
+  ###
+  dashboard-internal:
+    - 192.168.1.4
+    - 192.168.10.4
+  ###
+  # Proxmox
+  ###
+  pve-internal:
+    - 192.168.10.11
+    - 192.168.10.12
+    - 192.168.10.13
+  pve1-internal:
+    - 192.168.10.11
+  pve2-internal:
+    - 192.168.10.12
+  pve3-internal:
+    - 192.168.10.133
