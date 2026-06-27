@@ -1,35 +1,27 @@
 ---
-# Internal Cloudflare A records (Crossplane-managed)
-# Extracted from k8s/platform/crossplane/values.yaml
 # hostname -> [ips]
 dns_records:
+  ###
+  # Envoy
+  ###
   argocd-internal:
     - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  grafana-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  prometheus-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  n8n-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  backups-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  garage-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  garage-admin-internal:
-    - 192.168.10.240
-    - 192.168.10.241
-    - 192.168.10.242
-  sftp-internal:
-    - 192.168.10.241
+  ###
+  # Load Balanced
+  ###
+  dashboard-internal:
+    - 192.168.1.4
+    - 192.168.10.4
+  ###
+  # Proxmox
+  ###
+  pve-internal:
+    - 192.168.10.11
+    - 192.168.10.12
+    - 192.168.10.13
+  pve1-internal:
+    - 192.168.10.11
+  pve2-internal:
+    - 192.168.10.12
+  pve3-internal:
+    - 192.168.10.133
