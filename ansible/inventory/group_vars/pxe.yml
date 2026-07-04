@@ -1,0 +1,7 @@
+---
+# TODO(pre-existing): stop connecting as root (carried over from pxe/install.sh)
+ansible_user: root
+
+# The Talos version to download vmlinuz and initramfs from.
+# NOTE: old versions will not be automatically cleaned up.
+talos_linux_version: v1.12.4
