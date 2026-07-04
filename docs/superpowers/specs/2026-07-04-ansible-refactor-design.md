@@ -74,7 +74,7 @@ ansible/
     └── create-lxc.sh
 ```
 
-Deleted: all `install.sh` / `configure.sh` / `assess.sh` / `upgrade.sh` wrappers, the pxe `Makefile`, per-dir `ansible.cfg` and `requirements/`, `pxe/roles/pxe/templates/pxelinux.cfg/` (unreferenced), `pxe/roles/pxe/tests/` boilerplate. `upgrade.sh` references `upgrade-8to9.yml` which does not exist in the repo — the script is dead and is removed without replacement.
+Deleted in PR 1: `pxe/install.sh` (no secrets), `assess.sh`, `provision-worker.sh` (trivial), `upgrade.sh` (references `upgrade-8to9.yml`, which does not exist — dead), the pxe `Makefile`, per-dir `ansible.cfg` and `requirements/`. The three secret-fetching wrappers (`dns-lb/install.sh`, `warp-connector/install.sh`, `proxmox/configure.sh`) move to `ansible/scripts/run-<service>.sh` with updated paths and are deleted in PR 3 when lookups land — otherwise there is no way to supply secrets between PR 1 and PR 3. Dead role content (`pxe/templates/pxelinux.cfg/`, `pxe/tests/`, galaxy meta boilerplate) is removed in PR 2.
 
 `README.md` gets a run-book table mapping every old command to its new equivalent.
 
