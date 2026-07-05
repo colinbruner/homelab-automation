@@ -1,7 +1,7 @@
 ---
 - name: Install prerequisite packages
   ansible.builtin.apt:
-    pkg: "{{ packages }}"
+    pkg: "{{ caddy_lb_packages }}"
     state: present
     update_cache: true
 
@@ -11,28 +11,29 @@
     cmd: "curl -fsSL https://get.docker.com | sh"
     creates: /usr/bin/docker
 
-- name: Add caddy gpg key  # noqa: command-instead-of-module risky-shell-pipe
-  ansible.builtin.shell:
-    cmd: "curl -1sLf {{ caddy_gpg_url }} | gpg --dearmor -o {{ caddy_gpg_dest }}"
-    creates: "{{ caddy_gpg_dest }}"
+- name: Add caddy apt repository
+  ansible.builtin.deb822_repository:
+    name: caddy-stable
+    types: [deb]
+    uris: https://dl.cloudsmith.io/public/caddy/stable/deb/debian
+    suites: any-version
+    components: [main]
+    signed_by: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+  register: caddy_lb_repo
 
-- name: Add caddy apt repository  # noqa: command-instead-of-module risky-shell-pipe
-  ansible.builtin.shell:
-    cmd: "curl -1sLf {{ caddy_apt_repo_url }} | tee {{ caddy_apt_file }}"
-    creates: "{{ caddy_apt_file }}"
-  notify: Update apt cache
-
-- name: Flush handlers
-  ansible.builtin.meta: flush_handlers
+- name: Update apt cache after repo change  # noqa: no-handler
+  ansible.builtin.apt:
+    update_cache: true
+  when: caddy_lb_repo is changed
 
 - name: Install caddy base package
   ansible.builtin.apt:
     name: caddy
     state: present
 
-- name: Get installed caddy version  # noqa: var-naming[no-role-prefix]
+- name: Get installed caddy version
   ansible.builtin.command: caddy version
-  register: caddy_installed_version
+  register: caddy_lb_installed_version
   failed_when: false
   changed_when: false
 
@@ -42,11 +43,11 @@
 # The Caddy download API compiles the binary on-demand — allow extra time
 - name: Download caddy with plugins
   ansible.builtin.get_url:
-    url: "{{ caddy_download_url }}"
+    url: "{{ caddy_lb_download_url }}"
     dest: /usr/bin/caddy
     mode: "0755"
     owner: root
     group: root
     timeout: 300
-  when: caddy_version not in (caddy_installed_version.stdout | default(''))
+  when: caddy_lb_version not in (caddy_lb_installed_version.stdout | default(''))
   notify: Restart caddy

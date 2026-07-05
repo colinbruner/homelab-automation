@@ -4,8 +4,8 @@
   ansible.builtin.include_role:
     name: nfs_mount
   vars:
-    nfs_mount_server: "{{ nfs_server_addr }}"
-    nfs_mount_export: "{{ nfs_server_share_path }}"
+    nfs_mount_server: "{{ pxe_nfs_server_addr }}"
+    nfs_mount_export: "{{ pxe_nfs_export }}"
     nfs_mount_point: "{{ pxe_nfs_share_path }}"
     nfs_mount_boot: false
     nfs_mount_subdirs:

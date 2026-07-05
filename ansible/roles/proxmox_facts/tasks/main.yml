@@ -13,7 +13,7 @@
   changed_when: false
   failed_when: proxmox_facts_raw.rc != 0 or proxmox_facts_raw.stdout | length == 0
 
-- name: Set node facts
+- name: Set node facts  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     "node_{{ item.item }}": "{{ item.stdout | from_json }}"
   loop: "{{ proxmox_facts_raw.results }}"

@@ -10,7 +10,7 @@
     src: "{{ item }}"
     dest: "{{ pxe_tftp_root_path }}/{{ item | basename }}"
     remote_src: true
-  loop: "{{ ipxe_files_served_by_tftp + grub_files_served_by_tftp }}"
+  loop: "{{ pxe_ipxe_tftp_files + pxe_grub_tftp_files }}"
 
   # NOTE: see build/README.md in git root
 - name: Install custom undionly.kpxe file

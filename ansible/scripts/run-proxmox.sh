@@ -16,11 +16,11 @@ OIDC_CLIENT_SECRET=$(op read "op://lab/pocket-id-proxmox/client-secret")
 
 cd "$ANSIBLE_DIR"
 ansible-playbook \
-    -e "cloudflare_token=${CF_TOKEN}" \
-    -e "cloudflare_account_id=${CF_ACCOUNT_ID}" \
-    -e "acme_contact=${ACME_EMAIL}" \
-    -e "oidc_issuer_url=${OIDC_ISSUER_URL}" \
-    -e "oidc_client_id=${OIDC_CLIENT_ID}" \
-    -e "oidc_client_secret=${OIDC_CLIENT_SECRET}" \
+    -e "proxmox_cloudflare_token=${CF_TOKEN}" \
+    -e "proxmox_cloudflare_account_id=${CF_ACCOUNT_ID}" \
+    -e "proxmox_acme_contact=${ACME_EMAIL}" \
+    -e "proxmox_oidc_issuer_url=${OIDC_ISSUER_URL}" \
+    -e "proxmox_oidc_client_id=${OIDC_CLIENT_ID}" \
+    -e "proxmox_oidc_client_secret=${OIDC_CLIENT_SECRET}" \
     "$@" \
     playbooks/proxmox.yml

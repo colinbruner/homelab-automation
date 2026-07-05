@@ -23,7 +23,7 @@
 			crypto default token lifetime 3600
 			crypto key sign-verify {$CADDY_AUTH_KEY}
 			enable identity provider pocket-id
-			cookie domain {{ caddy_cookie_domain }}
+			cookie domain {{ caddy_lb_cookie_domain }}
 			transform user {
 				match realm pocket-id
 				action add role authp/user
@@ -31,7 +31,7 @@
 		}
 
 		authorization policy protected {
-			set auth url https://{{ caddy_auth_fqdn }}/auth/
+			set auth url https://{{ caddy_lb_auth_fqdn }}/auth/
 			crypto key verify {$CADDY_AUTH_KEY}
 			allow roles authp/user
 			validate bearer header
@@ -41,8 +41,8 @@
 }
 
 # Auth portal — handles Pocket ID OIDC login flow and callback
-# Register redirect URI in Pocket ID: https://{{ caddy_auth_fqdn }}/auth/oauth2/pocket-id/authorization-code-callback
-{{ caddy_auth_fqdn }} {
+# Register redirect URI in Pocket ID: https://{{ caddy_lb_auth_fqdn }}/auth/oauth2/pocket-id/authorization-code-callback
+{{ caddy_lb_auth_fqdn }} {
 	tls {
 		dns cloudflare {$CLOUDFLARE_API_TOKEN}
 	}
@@ -51,7 +51,7 @@
 	}
 }
 
-{% for backend in caddy_backends %}
+{% for backend in caddy_lb_backends %}
 {% set upstream_str = backend.upstreams | join(' ') if backend.upstreams is defined else backend.upstream %}
 # {{ backend.name }}
 {{ backend.fqdn }} {

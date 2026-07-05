@@ -14,5 +14,5 @@ cd "$ANSIBLE_DIR"
 ansible-galaxy collection install -r requirements.yml
 
 ansible-playbook \
-    --extra-vars "cloudflare_api_token=${CF_TOKEN} pocket_id_client_id=${POCKET_ID_CLIENT_ID} pocket_id_client_secret=${POCKET_ID_CLIENT_SECRET} caddy_auth_key=${CADDY_AUTH_KEY} technitium_admin_password=${TECHNITIUM_ADMIN_PASSWORD}" \
+    --extra-vars "cloudflare_api_token=${CF_TOKEN} caddy_lb_oidc_client_id=${POCKET_ID_CLIENT_ID} caddy_lb_oidc_client_secret=${POCKET_ID_CLIENT_SECRET} caddy_lb_auth_key=${CADDY_AUTH_KEY} technitium_admin_password=${TECHNITIUM_ADMIN_PASSWORD}" \
     playbooks/dns-lb.yml ${@+"$@"}

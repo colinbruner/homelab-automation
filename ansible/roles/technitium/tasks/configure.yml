@@ -19,7 +19,7 @@
     return_content: true
     status_code: 200
   register: technitium_settings
-  # no_log: true
+  no_log: true
 
 - name: Enable https on technitium web service
   ansible.builtin.uri:
@@ -40,11 +40,11 @@
   when: >
     not (technitium_settings.json.response.webServiceEnableTls | default(false)) or
     (technitium_settings.json.response.webServiceTlsCertificatePath | default('')) != technitium_cert_pfx_path
-  # no_log: true
+  no_log: true
 
 # Create a local primary zone so both Technitium instances authoritatively resolve
 # the node FQDNs and shared dns. entry to private IPs (split-horizon).
-- name: Create local zone for node fqdn resolution  # noqa: var-naming[no-role-prefix]
+- name: Create local zone for node fqdn resolution
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/zones/create"
     method: POST
@@ -57,11 +57,11 @@
     follow_redirects: all
     return_content: true
     status_code: 200
-  register: zone_create_result
+  register: technitium_zone_create_result
   failed_when:
-    - zone_create_result.json.status == "error"
-    - '"already exists" not in (zone_create_result.json.errorMessage | default(""))'
-  # no_log: true
+    - technitium_zone_create_result.json.status == "error"
+    - '"already exists" not in (technitium_zone_create_result.json.errorMessage | default(""))'
+  no_log: true
   when: technitium_local_records | length > 0
 
 - name: Add local dns records
@@ -82,5 +82,5 @@
     return_content: true
     status_code: 200
   loop: "{{ technitium_local_records }}"
-  # no_log: true
+  no_log: true
   when: technitium_local_records | length > 0
