@@ -42,22 +42,39 @@ Network Boot Flow:
 ```
 homelab-automation/
 ├── ansible/
-│   ├── pxe/                        # PXE server automation
-│   │   ├── pxe.yml                 # Main Ansible playbook
-│   │   ├── install.sh              # Wrapper: install deps + run playbook
-│   │   ├── provision.sh            # Creates LXC container on Proxmox
-│   │   ├── requirements/
-│   │   │   └── collections.yml     # Requires ansible.posix
-│   │   └── roles/pxe/
-│   │       ├── defaults/main.yml   # Default variables
-│   │       ├── vars/main.yml       # Version overrides (Talos: v1.9.4)
-│   │       ├── tasks/              # install, mount, configure, extract, talos
-│   │       ├── templates/          # boot.ipxe, nginx config, pxelinux config
-│   │       ├── files/              # Pre-built undionly.kpxe binary
-│   │       ├── scripts/            # LXC creation, ISO extraction helpers
-│   │       └── handlers/main.yml   # Restart tftpd-hpa, nginx
-│   └── proxmox/
-│       └── TODO.md                 # Proxmox host hardening checklist
+│   ├── ansible.cfg              # host_key_checking off, roles_path, default inventory
+│   ├── requirements.yml         # ansible.posix, community.general
+│   ├── inventory/
+│   │   ├── hosts.yml            # groups: proxmox, dns_lb, pxe, warp
+│   │   ├── group_vars/
+│   │   │   ├── all.yml
+│   │   │   ├── proxmox.yml      # ansible_user: root; proxmox secrets lookups
+│   │   │   ├── dns_lb.yml       # ansible_user: pi; technitium/caddy secrets lookups
+│   │   │   ├── pxe.yml          # ansible_user: root; talos_linux_version
+│   │   │   └── warp.yml         # ansible_user: pi; warp token lookup
+│   │   └── host_vars/           # ns1.yml, ns2.yml, proxmox-1..3.yml
+│   ├── playbooks/
+│   │   ├── site.yml             # imports the four config playbooks (weekly Semaphore)
+│   │   ├── dns-lb.yml
+│   │   ├── pxe.yml
+│   │   ├── warp-connector.yml
+│   │   ├── proxmox.yml
+│   │   └── ops/                 # manual-only, never scheduled
+│   │       ├── provision-worker.yml
+│   │       ├── capacity-report.yml
+│   │       └── download-talos.yml
+│   ├── roles/
+│   │   ├── technitium/          # Technitium DNS server
+│   │   ├── caddy_lb/            # Caddy reverse proxy / load balancer
+│   │   ├── pxe/                 # PXE server (TFTP + nginx + NFS)
+│   │   ├── warp_connector/      # Cloudflare WARP connector
+│   │   └── proxmox/             # Proxmox ACME + OIDC configuration
+│   └── scripts/
+│       ├── provision-pxe-lxc.sh # LXC provisioning via pct (uses desktop op CLI)
+│       ├── create-lxc.sh        # Raw pct commands for LXC creation
+│       ├── run-dns-lb.sh        # Secret-fetching wrapper (until Phase 3)
+│       ├── run-warp-connector.sh
+│       └── run-proxmox.sh
 └── build/
     ├── ipxe/                       # Custom iPXE bootloader
     │   ├── build.sh                # Build script
@@ -78,6 +95,24 @@ homelab-automation/
 - **NFS share** configured on NAS at `192.168.10.5:/var/nfs/shared/pxe`
 - **Podman or Docker** (only needed to build the SFTP container or iPXE on macOS)
 
+## Running playbooks
+
+All commands run from `ansible/` (`cd ansible`). One-time: `ansible-galaxy collection install -r requirements.yml`.
+
+| Old command | New command |
+|---|---|
+| `ansible/dns-lb/install.sh` | `./scripts/run-dns-lb.sh` (until secrets migration: direct `ansible-playbook playbooks/dns-lb.yml`) |
+| `ansible/pxe/install.sh <ip>` | `ansible-playbook playbooks/pxe.yml` |
+| `ansible/pxe/Makefile download-talos` | `ansible-playbook playbooks/ops/download-talos.yml` |
+| `ansible/pxe/provision.sh <proxmox-ip>` | `ansible/scripts/provision-pxe-lxc.sh <proxmox-ip>` |
+| `ansible/warp-connector/install.sh <ip>` | `./scripts/run-warp-connector.sh` |
+| `ansible/proxmox/configure.sh` | `./scripts/run-proxmox.sh` |
+| `ansible/proxmox/assess.sh` | `ansible-playbook playbooks/ops/capacity-report.yml` |
+| `ansible/proxmox/provision-worker.sh` | `ansible-playbook playbooks/ops/provision-worker.yml` |
+| (new) converge everything | `ansible-playbook playbooks/site.yml` |
+
+> **Note:** `site.yml` full runs require the secrets the wrapper scripts supply. It becomes directly runnable in Phase 3 when secrets migrate to inventory lookups.
+
 ## Usage
 
 ### 1. Provision the PXE LXC Container
@@ -85,7 +120,7 @@ homelab-automation/
 Creates a Debian 12 LXC container (ID 1001) on Proxmox. Credentials are pulled from 1Password.
 
 ```bash
-./ansible/pxe/provision.sh <proxmox-host-ip>
+ansible/scripts/provision-pxe-lxc.sh <proxmox-host-ip>
 ```
 
 ### 2. Configure the PXE Server
@@ -93,15 +128,9 @@ Creates a Debian 12 LXC container (ID 1001) on Proxmox. Credentials are pulled f
 Installs and configures all services (TFTP, nginx, NFS mount) and downloads Talos boot files.
 
 ```bash
-./ansible/pxe/install.sh <pxe-server-ip>
-```
-
-Or run the playbook directly:
-
-```bash
-cd ansible/pxe
-ansible-galaxy collection install -r requirements/collections.yml
-ansible-playbook -i 192.168.10.4, pxe.yml
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/pxe.yml
 ```
 
 ### 3. Build the Custom iPXE Bootloader
@@ -111,7 +140,7 @@ Only needed when `build/ipxe/chain.ipxe` changes. On Apple Silicon, run inside a
 ```bash
 cd build/ipxe
 ./build.sh
-cp bin/undionly.kpxe ../../ansible/pxe/roles/pxe/files/undionly.kpxe
+cp bin/undionly.kpxe ../../ansible/roles/pxe/files/undionly.kpxe
 ```
 
 ### 4. Build the SFTP Container
@@ -127,12 +156,12 @@ Deploy to Kubernetes with an NFS PersistentVolume for scanner document uploads.
 
 | Variable | Default | Location |
 |----------|---------|----------|
-| `talos_linux_version` | `v1.9.4` | `roles/pxe/vars/main.yml` |
-| `talos_linux_architectures` | `[amd64, arm64]` | `roles/pxe/defaults/main.yml` |
-| `pxe_server_addr` | `192.168.10.4` | `roles/pxe/defaults/main.yml` |
-| `nfs_server_addr` | `192.168.10.5` | `roles/pxe/defaults/main.yml` |
-| `nfs_server_share_path` | `/var/nfs/shared/pxe` | `roles/pxe/defaults/main.yml` |
-| `ubuntu_versions` | `[22.04.4]` | `roles/pxe/defaults/main.yml` |
+| `talos_linux_version` | `v1.12.4` | `ansible/inventory/group_vars/pxe.yml` |
+| `talos_linux_architectures` | `[amd64, arm64]` | `ansible/roles/pxe/defaults/main.yml` |
+| `pxe_server_addr` | `192.168.10.4` | `ansible/roles/pxe/defaults/main.yml` |
+| `nfs_server_addr` | `192.168.10.5` | `ansible/roles/pxe/defaults/main.yml` |
+| `nfs_server_share_path` | `/var/nfs/shared/pxe` | `ansible/roles/pxe/defaults/main.yml` |
+| `ubuntu_versions` | `[22.04.4]` | `ansible/roles/pxe/defaults/main.yml` |
 
 ## How Network Boot Works
 

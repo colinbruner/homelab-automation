@@ -1,0 +1,14 @@
+---
+# Converge all lab config. Scheduled weekly by Semaphore (see docs/semaphore.md).
+# Ops playbooks (playbooks/ops/) are intentionally NOT imported — manual only.
+- name: Import proxmox configuration
+  ansible.builtin.import_playbook: proxmox.yml
+
+- name: Import dns + lb configuration
+  ansible.builtin.import_playbook: dns-lb.yml
+
+- name: Import pxe server configuration
+  ansible.builtin.import_playbook: pxe.yml
+
+- name: Import warp connector configuration
+  ansible.builtin.import_playbook: warp-connector.yml

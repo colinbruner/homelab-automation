@@ -11,12 +11,31 @@ This repo automates a homelab built on **Proxmox** and **Talos Linux**. The prim
 ```
 homelab-automation/
 ├── ansible/
-│   ├── pxe/           # PXE boot server automation (main focus)
-│   │   ├── pxe.yml    # Main playbook
-│   │   ├── install.sh # Runs playbook against PXE server
-│   │   ├── provision.sh # Creates LXC container on Proxmox
-│   │   └── roles/pxe/ # Ansible role with tasks, templates, scripts
-│   └── proxmox/       # Proxmox host setup (TODO stage)
+│   ├── ansible.cfg              # host_key_checking off, roles_path, default inventory
+│   ├── requirements.yml         # ansible.posix, community.general
+│   ├── inventory/
+│   │   ├── hosts.yml            # groups: proxmox, dns_lb, pxe, warp
+│   │   ├── group_vars/          # all.yml, proxmox.yml, dns_lb.yml, pxe.yml, warp.yml
+│   │   └── host_vars/           # ns1.yml, ns2.yml, proxmox-1..3.yml
+│   ├── playbooks/
+│   │   ├── site.yml             # converge-everything entry point (Semaphore-scheduled)
+│   │   ├── dns-lb.yml           # Technitium DNS + Caddy LB
+│   │   ├── pxe.yml              # PXE server
+│   │   ├── warp-connector.yml   # Cloudflare WARP connector
+│   │   ├── proxmox.yml          # Proxmox ACME + OIDC
+│   │   └── ops/                 # manual-only: capacity-report, provision-worker, download-talos
+│   ├── roles/
+│   │   ├── technitium/          # Technitium DNS server
+│   │   ├── caddy_lb/            # Caddy reverse proxy / load balancer
+│   │   ├── pxe/                 # PXE server (TFTP + nginx + NFS)
+│   │   ├── warp_connector/      # Cloudflare WARP connector
+│   │   └── proxmox/             # Proxmox ACME + OIDC configuration
+│   └── scripts/
+│       ├── provision-pxe-lxc.sh # LXC provisioning (pct-based, uses desktop op CLI)
+│       ├── create-lxc.sh        # Raw pct commands for LXC creation
+│       ├── run-dns-lb.sh        # Secret-fetching wrapper (temporary until Phase 3)
+│       ├── run-warp-connector.sh
+│       └── run-proxmox.sh
 └── build/
     ├── ipxe/          # Builds custom undionly.kpxe bootloader
     └── sftp/          # Alpine SFTP container for network scanner
@@ -45,21 +64,33 @@ homelab-automation/
 
 ### Provision the PXE LXC container on Proxmox
 ```bash
-./ansible/pxe/provision.sh <proxmox-host-ip>
-# Uses 1password CLI to retrieve credentials
+ansible/scripts/provision-pxe-lxc.sh <proxmox-host-ip>
+# Uses desktop 1Password CLI to retrieve credentials
 ```
 
-### Run the PXE playbook against an existing host
+### Run a playbook
 ```bash
-./ansible/pxe/install.sh <pxe-server-ip>
-# Installs Ansible collections then runs pxe.yml
+cd ansible
+ansible-galaxy collection install -r requirements.yml   # one-time
+ansible-playbook playbooks/pxe.yml
+ansible-playbook playbooks/dns-lb.yml
+ansible-playbook playbooks/site.yml   # converge all (Phase 3+: secrets in inventory)
 ```
 
-### Run the playbook directly
+### Run an ops (manual-only) playbook
 ```bash
-cd ansible/pxe
-ansible-galaxy collection install -r requirements/collections.yml
-ansible-playbook -i <pxe-server-ip>, pxe.yml
+cd ansible
+ansible-playbook playbooks/ops/download-talos.yml
+ansible-playbook playbooks/ops/capacity-report.yml
+ansible-playbook playbooks/ops/provision-worker.yml
+```
+
+### Use a secret-fetching wrapper (until Phase 3)
+```bash
+cd ansible
+./scripts/run-dns-lb.sh
+./scripts/run-warp-connector.sh
+./scripts/run-proxmox.sh
 ```
 
 ### Build the custom iPXE bootloader
@@ -68,7 +99,7 @@ cd build/ipxe
 ./build.sh
 # On macOS (Apple Silicon): run inside a Linux container
 # Output: build/ipxe/bin/undionly.kpxe
-# Deploy: cp bin/undionly.kpxe ../../ansible/pxe/roles/pxe/files/undionly.kpxe
+# Deploy: cp bin/undionly.kpxe ../../ansible/roles/pxe/files/undionly.kpxe
 ```
 
 ### Build the SFTP container
@@ -91,12 +122,16 @@ The `pxe` role runs tasks in this order (`roles/pxe/tasks/main.yml`):
 
 | File | Purpose |
 |------|---------|
-| `ansible/pxe/roles/pxe/defaults/main.yml` | Default variables (packages, IPs, paths) |
-| `ansible/pxe/roles/pxe/vars/main.yml` | Override vars (Talos version = v1.9.4) |
-| `ansible/pxe/roles/pxe/templates/ipxe/boot.ipxe` | iPXE boot config (loads Talos kernel) |
-| `ansible/pxe/roles/pxe/files/undionly.kpxe` | Pre-built iPXE bootloader binary |
-| `ansible/pxe/scripts/create-lxc.sh` | Proxmox `pct` commands for LXC creation |
-| `ansible/pxe/scripts/extract-boot-disk.sh` | Mounts ISOs and extracts vmlinuz/initrd |
+| `ansible/ansible.cfg` | Project-wide Ansible configuration |
+| `ansible/inventory/hosts.yml` | Host inventory (proxmox, dns_lb, pxe, warp groups) |
+| `ansible/inventory/group_vars/pxe.yml` | PXE group vars including `talos_linux_version` |
+| `ansible/roles/pxe/defaults/main.yml` | PXE role default variables (packages, IPs, paths) |
+| `ansible/roles/pxe/templates/ipxe/boot.ipxe` | iPXE boot config (loads Talos kernel) |
+| `ansible/roles/pxe/files/undionly.kpxe` | Pre-built iPXE bootloader binary |
+| `ansible/roles/pxe/scripts/create-lxc.sh` | Proxmox `pct` commands for LXC creation |
+| `ansible/roles/pxe/scripts/extract-boot-disk.sh` | Mounts ISOs and extracts vmlinuz/initrd |
+| `ansible/playbooks/site.yml` | Converge-everything entry point (imports all four config playbooks) |
+| `ansible/scripts/provision-pxe-lxc.sh` | LXC provisioning script (pct-based) |
 | `build/ipxe/chain.ipxe` | Embedded iPXE script: DHCP + chain to HTTP |
 
 ## Conventions & Patterns
@@ -109,8 +144,9 @@ The `pxe` role runs tasks in this order (`roles/pxe/tasks/main.yml`):
 
 ## Notes for Making Changes
 
-- When updating Talos version: edit `ansible/pxe/roles/pxe/vars/main.yml` (`talos_linux_version`)
-- When adding new architectures: extend `talos_linux_architectures` list in defaults
-- The `undionly.kpxe` binary must be rebuilt if `build/ipxe/chain.ipxe` changes, then copied to `ansible/pxe/roles/pxe/files/`
+- When updating Talos version: edit `ansible/inventory/group_vars/pxe.yml` (`talos_linux_version`)
+- When adding new architectures: extend `talos_linux_architectures` list in `ansible/roles/pxe/defaults/main.yml`
+- The `undionly.kpxe` binary must be rebuilt if `build/ipxe/chain.ipxe` changes, then copied to `ansible/roles/pxe/files/`
 - The SFTP container uses RSA host keys specifically because older network scanners don't support ed25519
-- `ansible/proxmox/` is a work-in-progress; see `TODO.md` for pending items
+- `playbooks/ops/` playbooks are manual-only and intentionally excluded from `site.yml`
+- The `scripts/run-*.sh` wrappers are temporary: they supply secrets via desktop `op` CLI until Phase 3 migrates secrets to inventory lookups
