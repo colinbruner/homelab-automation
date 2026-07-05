@@ -1,0 +1,21 @@
+---
+# pvesh sometimes wraps output in {"data": ...} depending on version; the
+# python snippet unwraps it so downstream code always sees the bare value.
+- name: Get node data via pvesh
+  ansible.builtin.shell: |
+    set -o pipefail
+    pvesh get /nodes/$(hostname -s)/{{ item }} --output-format json \
+      | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+  args:
+    executable: /bin/bash
+  loop: "{{ proxmox_facts_endpoints }}"
+  register: proxmox_facts_raw
+  changed_when: false
+  failed_when: proxmox_facts_raw.rc != 0 or proxmox_facts_raw.stdout | length == 0
+
+- name: Set node facts
+  ansible.builtin.set_fact:
+    "node_{{ item.item }}": "{{ item.stdout | from_json }}"
+  loop: "{{ proxmox_facts_raw.results }}"
+  loop_control:
+    label: "{{ item.item }}"
