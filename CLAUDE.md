@@ -128,7 +128,7 @@ The `pxe` role runs tasks in this order (`roles/pxe/tasks/main.yml`):
 | `ansible/roles/pxe/defaults/main.yml` | PXE role default variables (packages, IPs, paths) |
 | `ansible/roles/pxe/templates/ipxe/boot.ipxe` | iPXE boot config (loads Talos kernel) |
 | `ansible/roles/pxe/files/undionly.kpxe` | Pre-built iPXE bootloader binary |
-| `ansible/roles/pxe/scripts/create-lxc.sh` | Proxmox `pct` commands for LXC creation |
+| `ansible/scripts/create-lxc.sh` | Proxmox `pct` commands for LXC creation |
 | `ansible/roles/pxe/scripts/extract-boot-disk.sh` | Mounts ISOs and extracts vmlinuz/initrd |
 | `ansible/playbooks/site.yml` | Converge-everything entry point (imports all four config playbooks) |
 | `ansible/scripts/provision-pxe-lxc.sh` | LXC provisioning script (pct-based) |

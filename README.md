@@ -89,7 +89,7 @@ homelab-automation/
 
 ## Prerequisites
 
-- **Ansible** with the `ansible.posix` collection
+- **Ansible** with the `ansible.posix` and `community.general` collections
 - **1Password CLI** (`op`) for credential retrieval during provisioning
 - **Proxmox** host accessible over SSH
 - **NFS share** configured on NAS at `192.168.10.5:/var/nfs/shared/pxe`
