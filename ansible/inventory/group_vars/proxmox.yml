@@ -1,2 +1,9 @@
 ---
 ansible_user: root
+
+proxmox_cloudflare_token: "{{ lookup('community.general.onepassword', 'cloudflare-proxmox', field='acme-token', vault='lab') }}"
+proxmox_cloudflare_account_id: "{{ lookup('community.general.onepassword', 'cloudflare-proxmox', field='account-id', vault='lab') }}"
+proxmox_acme_contact: "{{ lookup('community.general.onepassword', 'cloudflare-proxmox', field='acme-email', vault='lab') }}"
+proxmox_oidc_issuer_url: "{{ lookup('community.general.onepassword', 'pocket-id-proxmox', field='issuer-url', vault='lab') }}"
+proxmox_oidc_client_id: "{{ lookup('community.general.onepassword', 'pocket-id-proxmox', field='client-id', vault='lab') }}"
+proxmox_oidc_client_secret: "{{ lookup('community.general.onepassword', 'pocket-id-proxmox', field='client-secret', vault='lab') }}"

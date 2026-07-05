@@ -1,2 +1,10 @@
 ---
 ansible_user: pi
+
+# Secrets resolve at runtime from 1Password Connect.
+# Requires OP_CONNECT_HOST and OP_CONNECT_TOKEN in the environment (see README).
+cloudflare_api_token: "{{ lookup('community.general.onepassword', 'cloudflare-proxmox', field='acme-token', vault='lab') }}"
+technitium_admin_password: "{{ lookup('community.general.onepassword', 'technitium', field='password', vault='lab') }}"
+caddy_lb_oidc_client_id: "{{ lookup('community.general.onepassword', 'caddy-lb', field='client-id', vault='lab') }}"
+caddy_lb_oidc_client_secret: "{{ lookup('community.general.onepassword', 'caddy-lb', field='client-secret', vault='lab') }}"
+caddy_lb_auth_key: "{{ lookup('community.general.onepassword', 'caddy-lb', field='key', vault='lab') }}"
