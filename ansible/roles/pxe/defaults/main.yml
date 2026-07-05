@@ -13,14 +13,6 @@ ipxe_packages: # noqa: var-naming[no-role-prefix]
   - grub-efi-amd64-signed
   - shim-signed
 
-directories: # noqa: var-naming[no-role-prefix]
-  # tftp root — iPXE/grub/undionly files
-  - /srv/backup/homelab/pxe/tftp
-  # contains vmlinuz, initrd, etc
-  - /srv/backup/homelab/pxe/tftp/images
-  # files served by NGINX (e.g. ISOs)
-  - /srv/backup/homelab/pxe/http
-
 # The path on the PXE server to mount 'nfs_server_share_path'
 pxe_nfs_share_path: "/srv/backup/homelab"
 # IP Address or DNS for PXE Server (tftp, nginx)

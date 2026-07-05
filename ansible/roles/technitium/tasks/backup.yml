@@ -1,37 +1,22 @@
 ---
-- name: Install nfs client packages
+- name: Install backup prerequisites
   ansible.builtin.apt:
     pkg:
-      - nfs-common
       - rsync
     state: present
 
-- name: Check if nfs already mounted  # noqa: var-naming[no-role-prefix]
-  ansible.builtin.command: mountpoint -q {{ nfs_mount_point }}
-  register: nfs_mounted
-  changed_when: false
-  failed_when: false
-
-- name: Create nfs mount point
-  ansible.builtin.file:
-    path: "{{ nfs_mount_point }}"
-    state: directory
-    mode: "0750"
-  when: nfs_mounted.rc != 0
-
 - name: Mount nfs backup share
-  ansible.posix.mount:
-    src: "{{ nfs_server }}:{{ nfs_export }}"
-    path: "{{ nfs_mount_point }}"
-    fstype: nfs
-    opts: "{{ nfs_mount_opts }}"
-    state: mounted
-
-- name: Create dns backup subdirectory
-  ansible.builtin.file:
-    path: "{{ nfs_mount_point }}/dns"
-    state: directory
-    mode: "0750"
+  ansible.builtin.include_role:
+    name: nfs_mount
+  vars:
+    nfs_mount_server: "{{ technitium_backup_nfs_server }}"
+    nfs_mount_export: "{{ technitium_backup_nfs_export }}"
+    nfs_mount_point: "{{ technitium_backup_mount_point }}"
+    nfs_mount_opts: "{{ technitium_backup_mount_opts }}"
+    nfs_mount_mode: "0750"
+    nfs_mount_subdirs:
+      - path: dns
+        mode: "0750"
 
 - name: Install backup script
   ansible.builtin.copy:
@@ -42,7 +27,7 @@
       set -euo pipefail
 
       SOURCE="{{ technitium_data_dir }}/"
-      DEST="{{ nfs_mount_point }}/dns"
+      DEST="{{ technitium_backup_mount_point }}/dns"
       DATE=$(date +%Y%m%d-%H%M%S)
       ARCHIVE="${DEST}/dns-backup-${DATE}.tar.gz"
 
@@ -52,8 +37,8 @@
       rsync -a --delete "${SOURCE}" "${DEST}/latest/"
       tar -czf "${ARCHIVE}" -C "${DEST}" latest/
 
-      # Remove backups older than {{ backup_retain_days }} days
-      find "${DEST}" -maxdepth 1 -name "dns-backup-*.tar.gz" -mtime +{{ backup_retain_days }} -delete
+      # Remove backups older than {{ technitium_backup_retain_days }} days
+      find "${DEST}" -maxdepth 1 -name "dns-backup-*.tar.gz" -mtime +{{ technitium_backup_retain_days }} -delete
 
       echo "[$(date)] Backup complete: ${ARCHIVE}"
 
@@ -82,7 +67,7 @@
       Description=Run Technitium DNS backup nightly
 
       [Timer]
-      OnCalendar=*-*-* {{ backup_schedule }}
+      OnCalendar=*-*-* {{ technitium_backup_schedule }}
       Persistent=true
 
       [Install]

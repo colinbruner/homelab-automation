@@ -1,24 +1,14 @@
 ---
-
-# Mount NFS Mount NAS Server images directory to PXE Server
-- name: Create nfs mount point
-  ansible.builtin.file:
-    path: "{{ pxe_nfs_share_path }}"
-    state: directory
-    mode: "0755"
-
-- name: Mount nfs image volume
-  ansible.posix.mount:
-    src: "{{ nfs_server_addr }}:{{ nfs_server_share_path }}"
-    path: "{{ pxe_nfs_share_path }}"
-    opts: rw,sync,hard
-    boot: false
-    state: mounted
-    fstype: nfs
-
-- name: Ensure directories on nfs mount
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: "0755"
-  loop: "{{ directories }}"
+# Mount the NAS images/backup share onto the PXE server and lay out its dirs.
+- name: Mount nfs image share
+  ansible.builtin.include_role:
+    name: nfs_mount
+  vars:
+    nfs_mount_server: "{{ nfs_server_addr }}"
+    nfs_mount_export: "{{ nfs_server_share_path }}"
+    nfs_mount_point: "{{ pxe_nfs_share_path }}"
+    nfs_mount_boot: false
+    nfs_mount_subdirs:
+      - path: pxe/tftp
+      - path: pxe/tftp/images
+      - path: pxe/http

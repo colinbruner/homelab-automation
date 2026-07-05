@@ -1,0 +1,28 @@
+---
+- name: Install nfs client packages
+  ansible.builtin.apt:
+    pkg:
+      - nfs-common
+    state: present
+
+- name: Create mount point
+  ansible.builtin.file:
+    path: "{{ nfs_mount_point }}"
+    state: directory
+    mode: "{{ nfs_mount_mode }}"
+
+- name: Mount nfs share
+  ansible.posix.mount:
+    src: "{{ nfs_mount_server }}:{{ nfs_mount_export }}"
+    path: "{{ nfs_mount_point }}"
+    fstype: nfs
+    opts: "{{ nfs_mount_opts }}"
+    boot: "{{ nfs_mount_boot }}"
+    state: mounted
+
+- name: Create subdirectories on mount
+  ansible.builtin.file:
+    path: "{{ nfs_mount_point }}/{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode | default('0755') }}"
+  loop: "{{ nfs_mount_subdirs }}"
