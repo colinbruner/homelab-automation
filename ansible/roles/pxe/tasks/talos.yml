@@ -8,7 +8,7 @@
   ansible.builtin.file:
     path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}"
     state: directory
-    mode: "755"
+    mode: "0755"
   loop: "{{ talos_linux_architectures }}"
   notify: Restart tftpd
 
@@ -16,14 +16,14 @@
   ansible.builtin.get_url:
     url: "https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/vmlinuz-{{ item }}"
     dest: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz"
-    mode: "644"
+    mode: "0644"
   loop: "{{ talos_linux_architectures }}"
   notify: Restart tftpd
 
 - name: Ensure vmlinuz is world readable
   ansible.builtin.file:
     path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/vmlinuz"
-    mode: "644"
+    mode: "0644"
   loop: "{{ talos_linux_architectures }}"
   notify: Restart tftpd
 
@@ -31,13 +31,13 @@
   ansible.builtin.get_url:
     url: "https://github.com/siderolabs/talos/releases/download/{{ talos_linux_version }}/initramfs-{{ item }}.xz"
     dest: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz"
-    mode: "644"
+    mode: "0644"
   loop: "{{ talos_linux_architectures }}"
   notify: Restart tftpd
 
 - name: Ensure initramfs is world readable
   ansible.builtin.file:
     path: "{{ pxe_tftp_boot_path }}/talos/{{ talos_linux_version }}/{{ item }}/initramfs.xz"
-    mode: "644"
+    mode: "0644"
   loop: "{{ talos_linux_architectures }}"
   notify: Restart tftpd

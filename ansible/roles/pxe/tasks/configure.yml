@@ -17,13 +17,13 @@
   ansible.builtin.copy:
     src: undionly.kpxe
     dest: "{{ pxe_tftp_root_path }}/"
-    mode: "644" # NOTE: tftp served files must be globally readable
+    mode: "0644" # NOTE: tftp served files must be globally readable
   notify: Restart tftpd
 
 - name: Template boot.ipxe
   ansible.builtin.template:
     src: ipxe/boot.ipxe
-    mode: "644" # NOTE: tftp served files must be globally readable
+    mode: "0644" # NOTE: tftp served files must be globally readable
     dest: "{{ pxe_http_root_path }}/boot.ipxe"
   notify: Restart nginx
 
