@@ -1,0 +1,12 @@
+---
+# defaults file for warp-connector
+
+packages: # noqa: var-naming[no-role-prefix]
+  - sudo
+  - gnupg
+  - lsb-release
+
+# Cloudflare WARP client APT repository
+warp_gpg_url: "https://pkg.cloudflareclient.com/pubkey.gpg" # noqa: var-naming[no-role-prefix]
+warp_gpg_dest: "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" # noqa: var-naming[no-role-prefix]
+warp_apt_file: "/etc/apt/sources.list.d/cloudflare-client.list" # noqa: var-naming[no-role-prefix]
