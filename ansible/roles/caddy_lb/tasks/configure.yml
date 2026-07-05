@@ -1,5 +1,5 @@
 ---
-- name: ensure /etc/caddy exists
+- name: Ensure /etc/caddy exists
   ansible.builtin.file:
     path: /etc/caddy
     state: directory
@@ -7,7 +7,7 @@
     group: caddy
     mode: "0755"
 
-- name: template caddyfile to staging path
+- name: Template caddyfile to staging path
   ansible.builtin.template:
     src: Caddyfile.j2
     dest: /etc/caddy/Caddyfile.staged
@@ -15,12 +15,12 @@
     group: caddy
     mode: "0644"
 
-- name: fmt staged caddyfile
+- name: Fmt staged caddyfile
   ansible.builtin.command:
     cmd: caddy fmt --overwrite /etc/caddy/Caddyfile.staged
   changed_when: false
 
-- name: deploy formatted caddyfile
+- name: Deploy formatted caddyfile
   ansible.builtin.copy:
     src: /etc/caddy/Caddyfile.staged
     dest: /etc/caddy/Caddyfile
@@ -28,9 +28,9 @@
     owner: caddy
     group: caddy
     mode: "0644"
-  notify: restart caddy
+  notify: Restart caddy
 
-- name: template caddy environment file
+- name: Template caddy environment file
   ansible.builtin.template:
     src: caddy.env.j2
     dest: /etc/caddy/caddy.env
@@ -38,15 +38,15 @@
     group: caddy
     mode: "0600"
   no_log: true
-  notify: restart caddy
+  notify: Restart caddy
 
-- name: create systemd drop-in directory for caddy
+- name: Create systemd drop-in directory for caddy
   ansible.builtin.file:
     path: /etc/systemd/system/caddy.service.d
     state: directory
     mode: "0755"
 
-- name: install systemd drop-in to load caddy environment file
+- name: Install systemd drop-in to load caddy environment file
   ansible.builtin.copy:
     content: |
       [Service]
@@ -54,17 +54,17 @@
     dest: /etc/systemd/system/caddy.service.d/env.conf
     mode: "0644"
   notify:
-    - reload systemd
-    - restart caddy
+    - Reload systemd
+    - Restart caddy
 
 # Flush here so daemon-reload runs (picks up EnvironmentFile drop-in) and caddy
 # restarts with env vars loaded — before the "enable and start" task below.
 # On initial install this prevents "reload caddy" failing against a caddy process
 # that was started without the env vars.
-- name: flush handlers
+- name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
-- name: enable and start caddy
+- name: Enable and start caddy
   ansible.builtin.service:
     name: caddy
     enabled: true

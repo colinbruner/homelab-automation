@@ -12,14 +12,14 @@
 # fails cert validation (cert is for the node FQDN, not 127.0.0.1). All calls
 # are localhost-only so skipping validation is safe.
 
-- name: wait for technitium http api to be ready
+- name: Wait for technitium http api to be ready
   ansible.builtin.wait_for:
     host: 127.0.0.1
     port: "{{ technitium_http_port }}"
     delay: 2
     timeout: 30
 
-- name: try login with configured password
+- name: Try login with configured password  # noqa: var-naming[no-role-prefix]
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/user/login"
     method: GET
@@ -35,7 +35,7 @@
   failed_when: false
   no_log: true
 
-- name: try login with default credentials (fresh install)
+- name: Try login with default credentials (fresh install)  # noqa: var-naming[no-role-prefix]
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/user/login"
     method: GET
@@ -52,7 +52,7 @@
   no_log: true
   when: (login_configured.json | default({})).status | default('') != 'ok'
 
-- name: fail if neither login succeeded
+- name: Fail if neither login succeeded
   ansible.builtin.fail:
     msg: >
       Could not authenticate to Technitium with the configured password or the
@@ -62,7 +62,7 @@
     - (login_configured.json | default({})).status | default('') != 'ok'
     - (login_default.json | default({})).status | default('') != 'ok'
 
-- name: set auth token fact
+- name: Set auth token fact
   ansible.builtin.set_fact:
     technitium_token: >-
       {{ login_configured.json.token
@@ -70,7 +70,7 @@
          else login_default.json.token }}
   no_log: true
 
-- name: set admin password from default (first run)
+- name: Set admin password from default (first run)
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/user/changePassword"
     method: POST

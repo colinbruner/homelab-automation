@@ -1,25 +1,25 @@
 ---
-- name: install nfs client packages
+- name: Install nfs client packages
   ansible.builtin.apt:
     pkg:
       - nfs-common
       - rsync
     state: present
 
-- name: check if nfs already mounted
+- name: Check if nfs already mounted  # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: mountpoint -q {{ nfs_mount_point }}
   register: nfs_mounted
   changed_when: false
   failed_when: false
 
-- name: create nfs mount point
+- name: Create nfs mount point
   ansible.builtin.file:
     path: "{{ nfs_mount_point }}"
     state: directory
     mode: "0750"
   when: nfs_mounted.rc != 0
 
-- name: mount nfs backup share
+- name: Mount nfs backup share
   ansible.posix.mount:
     src: "{{ nfs_server }}:{{ nfs_export }}"
     path: "{{ nfs_mount_point }}"
@@ -27,13 +27,13 @@
     opts: "{{ nfs_mount_opts }}"
     state: mounted
 
-- name: create dns backup subdirectory
+- name: Create dns backup subdirectory
   ansible.builtin.file:
     path: "{{ nfs_mount_point }}/dns"
     state: directory
     mode: "0750"
 
-- name: install backup script
+- name: Install backup script
   ansible.builtin.copy:
     dest: /usr/local/bin/dns-backup.sh
     mode: "0750"
@@ -57,7 +57,7 @@
 
       echo "[$(date)] Backup complete: ${ARCHIVE}"
 
-- name: install backup systemd service unit
+- name: Install backup systemd service unit
   ansible.builtin.copy:
     dest: /etc/systemd/system/dns-backup.service
     mode: "0644"
@@ -71,9 +71,9 @@
       ExecStart=/usr/local/bin/dns-backup.sh
       StandardOutput=journal
       StandardError=journal
-  notify: reload systemd
+  notify: Reload systemd
 
-- name: install backup systemd timer unit
+- name: Install backup systemd timer unit
   ansible.builtin.copy:
     dest: /etc/systemd/system/dns-backup.timer
     mode: "0644"
@@ -87,12 +87,12 @@
 
       [Install]
       WantedBy=timers.target
-  notify: reload systemd
+  notify: Reload systemd
 
-- name: flush handlers
+- name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
-- name: enable and start backup timer
+- name: Enable and start backup timer
   ansible.builtin.service:
     name: dns-backup.timer
     enabled: true

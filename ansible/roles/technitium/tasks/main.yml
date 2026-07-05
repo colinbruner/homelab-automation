@@ -1,18 +1,18 @@
 ---
-- name: user
+- name: User
   ansible.builtin.include_tasks: user.yml
 
-- name: install
+- name: Install
   ansible.builtin.include_tasks: install.yml
 
-- name: bootstrap
+- name: Bootstrap
   ansible.builtin.include_tasks: bootstrap.yml
 
-- name: cert
+- name: Cert
   ansible.builtin.include_tasks: cert.yml
 
-- name: configure
+- name: Configure
   ansible.builtin.include_tasks: configure.yml
 
-- name: backup
+- name: Backup
   ansible.builtin.include_tasks: backup.yml

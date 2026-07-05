@@ -3,7 +3,7 @@
 # Running it again will upgrade to the latest available version.
 # https://technitium.com/dns/
 
-- name: install prerequisite packages
+- name: Install prerequisite packages
   ansible.builtin.apt:
     pkg:
       - curl
@@ -11,13 +11,13 @@
     state: present
     update_cache: true
 
-- name: install or upgrade technitium dns server
+- name: Install or upgrade technitium dns server  # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell:
     cmd: "curl -sSL {{ technitium_install_script }} | bash"
   register: technitium_install
   changed_when: "'TechnitiumDNS' in technitium_install.stdout"
 
-- name: ensure technitium service is enabled and running
+- name: Ensure technitium service is enabled and running
   ansible.builtin.service:
     name: "{{ technitium_service }}"
     enabled: true

@@ -7,7 +7,7 @@
 # fails cert validation (cert is for the node FQDN, not 127.0.0.1). All calls
 # are localhost-only so skipping validation is safe.
 
-- name: get current settings
+- name: Get current settings
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/get"
     method: GET
@@ -19,9 +19,9 @@
     return_content: true
     status_code: 200
   register: technitium_settings
-  #no_log: true
+  # no_log: true
 
-- name: enable https on technitium web service
+- name: Enable https on technitium web service
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/settings/set"
     method: POST
@@ -40,11 +40,11 @@
   when: >
     not (technitium_settings.json.response.webServiceEnableTls | default(false)) or
     (technitium_settings.json.response.webServiceTlsCertificatePath | default('')) != technitium_cert_pfx_path
-  #no_log: true
+  # no_log: true
 
 # Create a local primary zone so both Technitium instances authoritatively resolve
 # the node FQDNs and shared dns. entry to private IPs (split-horizon).
-- name: create local zone for node fqdn resolution
+- name: Create local zone for node fqdn resolution  # noqa: var-naming[no-role-prefix]
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/zones/create"
     method: POST
@@ -61,10 +61,10 @@
   failed_when:
     - zone_create_result.json.status == "error"
     - '"already exists" not in (zone_create_result.json.errorMessage | default(""))'
-  #no_log: true
+  # no_log: true
   when: technitium_local_records | length > 0
 
-- name: add local dns records
+- name: Add local dns records
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ technitium_http_port }}/api/zones/records/add"
     method: POST
@@ -82,5 +82,5 @@
     return_content: true
     status_code: 200
   loop: "{{ technitium_local_records }}"
-  #no_log: true
+  # no_log: true
   when: technitium_local_records | length > 0
