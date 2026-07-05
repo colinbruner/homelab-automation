@@ -18,6 +18,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v25
+        with:
+          # Run from ansible/ so ansible.cfg (roles_path) resolves roles,
+          # matching how lint is run locally.
+          working_directory: ansible
+          requirements_file: requirements.yml
 
   syntax-check:
     runs-on: ubuntu-latest
