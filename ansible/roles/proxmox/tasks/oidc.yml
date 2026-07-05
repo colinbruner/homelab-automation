@@ -6,13 +6,13 @@
 # Cluster-level: realm is shared across all nodes via /etc/pve/, run once.
 ###############################################################################
 
-- name: check existing authentication realms
+- name: Check existing authentication realms # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: pveum realm list --output-format json
   register: realm_list
   changed_when: false
   run_once: true
 
-- name: configure pocket-id oidc realm
+- name: Configure pocket-id oidc realm # noqa: no-changed-when
   ansible.builtin.command: >-
     pveum realm add {{ oidc_realm_name }}
     --type openid
@@ -28,14 +28,14 @@
   no_log: true
   when: oidc_realm_name not in realm_list.stdout
 
-- name: get current realm config
+- name: Get current realm config
   ansible.builtin.command: pvesh get /access/domains/{{ oidc_realm_name }} --output-format json
-  register: realm_config
+  register: realm_config # noqa: var-naming[no-role-prefix]
   changed_when: false
   run_once: true
   when: oidc_realm_name in realm_list.stdout
 
-- name: check if realm config has drifted
+- name: Check if realm config has drifted # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     oidc_realm_drifted: >-
       {{
@@ -48,14 +48,14 @@
   run_once: true
   when: oidc_realm_name in realm_list.stdout
 
-- name: delete pocket-id oidc realm (config has drifted)
+- name: Delete pocket-id oidc realm (config has drifted) # noqa: no-changed-when
   ansible.builtin.command: pveum realm del {{ oidc_realm_name }}
   run_once: true
   when:
     - oidc_realm_name in realm_list.stdout
     - oidc_realm_drifted | default(false)
 
-- name: recreate pocket-id oidc realm (config has drifted)
+- name: Recreate pocket-id oidc realm (config has drifted) # noqa: no-changed-when
   ansible.builtin.command: >-
     pveum realm add {{ oidc_realm_name }}
     --type openid
@@ -75,26 +75,26 @@
 
 # ─── Default realm ────────────────────────────────────────────────────────────
 
-- name: set pocket-id as default login realm
+- name: Set pocket-id as default login realm # noqa: no-changed-when
   ansible.builtin.command: pveum realm modify {{ oidc_realm_name }} --default 1
   run_once: true
   when: oidc_default_realm | bool
 
 # ─── Group → role mappings ────────────────────────────────────────────────────
 
-- name: get existing groups
+- name: Get existing groups
   ansible.builtin.command: pveum group list --output-format json
-  register: pve_groups
+  register: pve_groups # noqa: var-naming[no-role-prefix]
   changed_when: false
   run_once: true
 
-- name: ensure oidc groups exist
+- name: Ensure oidc groups exist # noqa: no-changed-when
   ansible.builtin.command: pveum group add {{ item.group }}
   run_once: true
   when: item.group not in pve_groups.stdout
   loop: "{{ oidc_group_role_mappings }}"
 
-- name: assign roles to groups at root path
+- name: Assign roles to groups at root path # noqa: no-changed-when
   ansible.builtin.command: >-
     pveum aclmod /
     --groups {{ item.group }}

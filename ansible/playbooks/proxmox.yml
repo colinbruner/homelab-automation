@@ -6,11 +6,11 @@
 #   - ACME / Let's Encrypt certificates via Cloudflare DNS-01 challenge
 #
 # Usage:
-#   ./configure.sh                    # full configuration
-#   ./configure.sh --tags acme        # ACME certs only
+#   ./scripts/run-proxmox.sh                    # full configuration
+#   ./scripts/run-proxmox.sh --tags acme        # ACME certs only
 ###############################################################################
 
-- name: configure proxmox hosts
+- name: Configure proxmox hosts
   hosts: proxmox
   gather_facts: true
   serial: 1
