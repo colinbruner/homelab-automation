@@ -1,15 +1,15 @@
 ---
-- name: install
+- name: Install
   ansible.builtin.include_tasks: install.yml
 
-- name: mount
+- name: Mount
   ansible.builtin.include_tasks: mount.yml
 
-- name: configure
+- name: Configure
   ansible.builtin.include_tasks: configure.yml
 
-- name: extract
+- name: Extract
   ansible.builtin.include_tasks: extract.yml
 
-- name: talos
+- name: Talos
   ansible.builtin.include_tasks: talos.yml

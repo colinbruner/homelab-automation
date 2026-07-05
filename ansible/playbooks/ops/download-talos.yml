@@ -1,0 +1,16 @@
+---
+- name: Download Talos boot images to PXE server
+  hosts: pxe
+  become: true
+  vars:
+    talos_download_arches:
+      - amd64
+      - arm64
+  tasks:
+    - name: Run download script on target (uploaded + cleaned up automatically)
+      ansible.builtin.script:
+        cmd: >-
+          {{ playbook_dir }}/../../roles/pxe/scripts/download-talos-images.sh
+          {{ talos_linux_version }} {{ talos_download_arches | join(' ') }}
+      register: pxe_talos_download
+      changed_when: true

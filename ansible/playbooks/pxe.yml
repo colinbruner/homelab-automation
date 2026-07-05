@@ -1,0 +1,8 @@
+---
+- name: Configure PXE boot server
+  hosts: pxe
+  vars:
+    download_images: false # NOTE: Override via -e when refreshing ISO extracts
+  roles:
+    - role: pxe
+      become: true
