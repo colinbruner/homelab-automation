@@ -1,0 +1,5 @@
+---
+lab_user_name: pi
+lab_user_shell: /bin/bash
+lab_user_sudo: true
+lab_user_pubkeys: []
