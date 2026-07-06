@@ -1,9 +1,0 @@
----
-# vars file for pxe
-
-###
-# TODO: Move to vars outside role?
-###
-# The Ubuntu versions to download vmlinuz and initrd from
-ubuntu_versions: # noqa: var-naming[no-role-prefix]
-  - 22.04.4

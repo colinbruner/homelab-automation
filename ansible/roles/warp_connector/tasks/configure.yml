@@ -18,10 +18,26 @@
     enabled: true
     state: started
 
-- name: Register warp connector with cloudflare # noqa: no-changed-when
+- name: Check warp registration
+  ansible.builtin.command: warp-cli --accept-tos registration show
+  register: warp_connector_registration
+  changed_when: false
+  failed_when: false
+
+- name: Register warp connector with cloudflare
   ansible.builtin.command:
     cmd: "warp-cli --accept-tos connector new {{ warp_connector_token }}"
+  when: warp_connector_registration.rc != 0
+  changed_when: true
+  no_log: true
 
-- name: Connect warp # noqa: no-changed-when
+- name: Check warp connection status
+  ansible.builtin.command: warp-cli --accept-tos status
+  register: warp_connector_status
+  changed_when: false
+
+- name: Connect warp
   ansible.builtin.command:
-    cmd: "warp-cli connect"
+    cmd: warp-cli --accept-tos connect
+  when: "'Connected' not in warp_connector_status.stdout"
+  changed_when: true

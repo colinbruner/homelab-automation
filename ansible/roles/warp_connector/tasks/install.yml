@@ -2,23 +2,23 @@
 
 - name: Install prerequisite packages
   ansible.builtin.apt:
-    pkg: "{{ packages }}"
+    pkg: "{{ warp_connector_packages }}"
     update_cache: true
 
-- name: Add cloudflare warp gpg key # noqa: risky-shell-pipe command-instead-of-module
-  ansible.builtin.shell:
-    cmd: "curl -fsSL {{ warp_gpg_url }} | gpg --yes --dearmor --output {{ warp_gpg_dest }}"
-    creates: "{{ warp_gpg_dest }}"
-
 - name: Add cloudflare warp apt repository
-  ansible.builtin.copy:
-    content: "deb [signed-by={{ warp_gpg_dest }}] https://pkg.cloudflareclient.com/ {{ ansible_distribution_release }} main\n"
-    dest: "{{ warp_apt_file }}"
-    mode: "644"
-  notify: Update apt cache
+  ansible.builtin.deb822_repository:
+    name: cloudflare-warp
+    types: [deb]
+    uris: https://pkg.cloudflareclient.com/
+    suites: "{{ ansible_distribution_release }}"
+    components: [main]
+    signed_by: https://pkg.cloudflareclient.com/pubkey.gpg
+  register: warp_connector_repo
 
-- name: Flush handlers
-  ansible.builtin.meta: flush_handlers
+- name: Update apt cache after repo change  # noqa: no-handler
+  ansible.builtin.apt:
+    update_cache: true
+  when: warp_connector_repo is changed
 
 - name: Install cloudflare-warp
   ansible.builtin.apt:

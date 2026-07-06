@@ -13,6 +13,12 @@
       become: true
 
   roles:
+    - role: lab_user
+      become: true
+      vars:
+        lab_user_pubkeys: "{{ lab_authorized_pubkeys }}"
+      tags: user
+
     - role: technitium
       become: true
       tags: dns

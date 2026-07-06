@@ -1,40 +1,35 @@
 ---
 # Caddy version — update to latest stable before running
 # Check: https://github.com/caddyserver/caddy/releases
-caddy_version: "v2.9.1"  # noqa: var-naming[no-role-prefix]
-caddy_arch: "arm64"  # noqa: var-naming[no-role-prefix]
+caddy_lb_version: "v2.9.1"
+caddy_lb_arch: "arm64"
 
 # Download URL for Caddy with cloudflare DNS-01 and caddy-security (OIDC) plugins
-caddy_download_url: >-  # noqa: var-naming[no-role-prefix]
-  https://caddyserver.com/api/download?os=linux&arch={{ caddy_arch
-  }}&caddy_version={{ caddy_version
+caddy_lb_download_url: >-
+  https://caddyserver.com/api/download?os=linux&arch={{ caddy_lb_arch
+  }}&caddy_version={{ caddy_lb_version
   }}&p=github.com/caddy-dns/cloudflare&p=github.com/greenpau/caddy-security
 
-# Caddy GPG key and apt repository
-caddy_gpg_url: "https://dl.cloudsmith.io/public/caddy/stable/gpg.key"  # noqa: var-naming[no-role-prefix]
-caddy_gpg_dest: "/usr/share/keyrings/caddy-stable-archive-keyring.gpg"  # noqa: var-naming[no-role-prefix]
-caddy_apt_repo_url: "https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt"  # noqa: var-naming[no-role-prefix]
-caddy_apt_file: "/etc/apt/sources.list.d/caddy-stable.list"  # noqa: var-naming[no-role-prefix]
-
 # Prerequisite packages
-packages:  # noqa: var-naming[no-role-prefix]
+caddy_lb_packages:
   - debian-keyring
   - debian-archive-keyring
   - apt-transport-https
   - curl
+  - python3-debian
 
 # Domain config
-caddy_base_domain: "colinbruner.com"  # noqa: var-naming[no-role-prefix]
+caddy_lb_base_domain: "colinbruner.com"
 
 # Hostname for the Caddy auth portal (handles OIDC login + callback)
-# Register https://{{ caddy_auth_fqdn }}/auth/callback as redirect URI in Pocket ID
-caddy_auth_fqdn: "lb.{{ caddy_base_domain }}"  # noqa: var-naming[no-role-prefix]
+# Register https://{{ caddy_lb_auth_fqdn }}/auth/callback as redirect URI in Pocket ID
+caddy_lb_auth_fqdn: "lb.{{ caddy_lb_base_domain }}"
 
 # Cookie domain — leading dot allows sharing across all subdomains
-caddy_cookie_domain: ".{{ caddy_base_domain }}"  # noqa: var-naming[no-role-prefix]
+caddy_lb_cookie_domain: ".{{ caddy_lb_base_domain }}"
 
 # Pocket ID OIDC issuer URL
-pocket_id_issuer_url: "https://auth.colinbruner.com"  # noqa: var-naming[no-role-prefix]
+caddy_lb_oidc_issuer_url: "https://auth.colinbruner.com"
 
 # Backends to reverse-proxy
 # Fields:
@@ -44,23 +39,23 @@ pocket_id_issuer_url: "https://auth.colinbruner.com"  # noqa: var-naming[no-role
 #   upstreams       - list of backend URLs for load balancing (use instead of upstream)
 #   oidc_protected  - true = require Pocket ID login before proxying
 #   tls_skip_verify - true = skip TLS verification on upstream (for self-signed certs)
-caddy_backends:  # noqa: var-naming[no-role-prefix]
+caddy_lb_backends:
   - name: truenas
-    fqdn: "truenas.{{ caddy_base_domain }}"
+    fqdn: "truenas.{{ caddy_lb_base_domain }}"
     upstream: "https://192.168.10.50"
     oidc_protected: true
     tls_skip_verify: true
 
   - name: dashboard
-    fqdn: "dashboard.{{ caddy_base_domain }}"
+    fqdn: "dashboard.{{ caddy_lb_base_domain }}"
     upstream: "http://192.168.10.50:30333"
 
   - name: dashboard-internal
-    fqdn: "dashboard-internal.{{ caddy_base_domain }}"
+    fqdn: "dashboard-internal.{{ caddy_lb_base_domain }}"
     upstream: "http://192.168.10.50:30333"
 
   - name: technitium-dns
-    fqdn: "dns.{{ caddy_base_domain }}"
+    fqdn: "dns.{{ caddy_lb_base_domain }}"
     upstreams:
       - "https://192.168.1.3:53443"
       - "https://192.168.1.4:53443"

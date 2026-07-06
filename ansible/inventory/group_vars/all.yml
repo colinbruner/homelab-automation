@@ -1,0 +1,5 @@
+---
+# SSH public keys authorized on lab hosts (distributed by the lab_user role).
+# Public keys are not secrets. The Semaphore runner key is added in Phase 4.
+lab_authorized_pubkeys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPE/CB9u3hsHE6/8vnQs4ZB4KFNDQsTKkce5SrPQD4gH"

@@ -1,7 +1,7 @@
 ---
 
-- name: Extract boot disk files from mounted isos # noqa: var-naming[no-role-prefix]
+- name: Extract boot disk files from mounted isos
   ansible.builtin.script:
     cmd: scripts/extract-boot-disk.sh {{ pxe_nfs_share_path }} {{ pxe_tftp_boot_path }}
-  register: result
-  changed_when: '"true" in result.stdout_lines' # NOTE: script prints 'true' to stdout when changes occur
+  register: pxe_extract_result
+  changed_when: '"true" in pxe_extract_result.stdout_lines' # NOTE: script prints 'true' to stdout when changes occur

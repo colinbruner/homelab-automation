@@ -1,7 +1,4 @@
 ---
-- name: User
-  ansible.builtin.include_tasks: user.yml
-
 - name: Install
   ansible.builtin.include_tasks: install.yml
 
