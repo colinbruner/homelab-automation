@@ -1,16 +1,17 @@
+---
 # ACME / Let's Encrypt
 proxmox_acme_account_name: default
 proxmox_acme_directory: https://acme-v02.api.letsencrypt.org/directory
 
-# proxmox_acme_contact: must be provided at runtime (email address)
-# e.g. -e "proxmox_acme_contact=admin@example.com"
+# proxmox_acme_contact is resolved at runtime from 1Password Connect via
+# group_vars/proxmox.yml lookups
 
 # Cloudflare DNS plugin
 proxmox_acme_dns_plugin_id: cloudflare
 proxmox_acme_dns_plugin: cf
 
-# proxmox_cloudflare_token and proxmox_cloudflare_account_id must be provided at runtime
-# e.g. via scripts/run-proxmox.sh which pulls them from 1Password
+# proxmox_cloudflare_token and proxmox_cloudflare_account_id are resolved at
+# runtime from 1Password Connect via group_vars/proxmox.yml lookups
 
 # proxmox_acme_domain: set per-host in inventory/host_vars/
 
@@ -30,5 +31,5 @@ proxmox_oidc_group_role_mappings:
   - group: readonly
     role: PVEAuditor
 
-# proxmox_oidc_issuer_url, proxmox_oidc_client_id, proxmox_oidc_client_secret must be provided at runtime
-# e.g. via scripts/run-proxmox.sh which pulls them from 1Password
+# proxmox_oidc_issuer_url, proxmox_oidc_client_id, proxmox_oidc_client_secret are
+# resolved at runtime from 1Password Connect via group_vars/proxmox.yml lookups

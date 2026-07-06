@@ -139,5 +139,6 @@ The `pxe` role runs tasks in this order (`roles/pxe/tasks/main.yml`):
 - When adding new architectures: extend `talos_linux_architectures` list in `ansible/roles/pxe/defaults/main.yml`
 - The `undionly.kpxe` binary must be rebuilt if `build/ipxe/chain.ipxe` changes, then copied to `ansible/roles/pxe/files/`
 - The SFTP container uses RSA host keys specifically because older network scanners don't support ed25519
-- `playbooks/ops/` playbooks are manual-only and intentionally excluded from `site.yml`
+- `playbooks/ops/` playbooks are manual-only, intentionally excluded from `site.yml`, and never scheduled in Semaphore
+- `site.yml` runs weekly via Semaphore (runbook: `docs/semaphore.md`), so merging to `main` applies changes on the next scheduled run
 - Secrets (Cloudflare tokens, OIDC credentials, etc.) are resolved via `community.general.onepassword` lookups in `group_vars`; no wrapper scripts needed

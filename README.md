@@ -118,6 +118,14 @@ Export before running anything that touches secrets:
 
 Lint and --syntax-check never need these (lookups are lazy).
 
+## Scheduled applies (Semaphore)
+
+`playbooks/site.yml` runs weekly from a [Semaphore UI](https://semaphoreui.com/)
+instance in the homelab Kubernetes cluster, so **merging to `main` means the
+change is applied on the next scheduled run**. Ops playbooks are never
+scheduled. See [docs/semaphore.md](docs/semaphore.md) for the deployment and
+configuration runbook.
+
 ## Usage
 
 ### 1. Provision the PXE LXC Container
