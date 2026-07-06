@@ -6,6 +6,8 @@ dns_records:
   ###
   argocd-internal:
     - 192.168.10.240
+  semaphore-internal:
+    - 192.168.10.240
   ###
   # Load Balanced
   ###
