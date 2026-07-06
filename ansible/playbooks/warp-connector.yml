@@ -1,0 +1,6 @@
+---
+- name: Configure Cloudflare WARP connector
+  hosts: warp
+  roles:
+    - role: warp_connector
+      become: true

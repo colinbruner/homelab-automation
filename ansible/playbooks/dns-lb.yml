@@ -1,0 +1,22 @@
+---
+- name: Configure DNS + LB raspberry pis
+  hosts: dns_lb
+  gather_facts: false
+  pre_tasks:
+    - name: Bootstrap python3
+      ansible.builtin.raw: apt-get update && apt-get install -y python3
+      become: true
+      changed_when: false
+
+    - name: Gather facts
+      ansible.builtin.setup:
+      become: true
+
+  roles:
+    - role: technitium
+      become: true
+      tags: dns
+
+    - role: caddy_lb
+      become: true
+      tags: lb

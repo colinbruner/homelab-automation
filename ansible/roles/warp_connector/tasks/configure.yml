@@ -1,0 +1,27 @@
+- name: Enable ip forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    reload: true
+
+- name: Create warp user
+  ansible.builtin.user:
+    name: warp
+    system: true
+    shell: /usr/sbin/nologin
+    comment: "Cloudflare WARP service user"
+
+- name: Ensure warp-svc is enabled and running
+  ansible.builtin.service:
+    name: warp-svc
+    enabled: true
+    state: started
+
+- name: Register warp connector with cloudflare # noqa: no-changed-when
+  ansible.builtin.command:
+    cmd: "warp-cli --accept-tos connector new {{ warp_connector_token }}"
+
+- name: Connect warp # noqa: no-changed-when
+  ansible.builtin.command:
+    cmd: "warp-cli connect"

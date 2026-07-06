@@ -1,0 +1,80 @@
+---
+- name: Gather proxmox node capacity facts
+  hosts: proxmox
+  gather_facts: false
+  vars:
+    target_vcpu: 4
+    target_ram_gb: 4
+    target_disk_gb: 50
+    report_output_path: /tmp/proxmox-capacity-report.txt
+
+  tasks:
+    - name: Get node status # noqa: risky-shell-pipe
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/status --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_status_raw
+      changed_when: false
+      failed_when: _node_status_raw.rc != 0 or _node_status_raw.stdout | length == 0
+
+    - name: Get node qemu vms # noqa: risky-shell-pipe
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/qemu --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_qemu_raw
+      changed_when: false
+      failed_when: _node_qemu_raw.rc != 0 or _node_qemu_raw.stdout | length == 0
+
+    - name: Get node lxc containers # noqa: risky-shell-pipe
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/lxc --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_lxc_raw
+      changed_when: false
+      failed_when: _node_lxc_raw.rc != 0 or _node_lxc_raw.stdout | length == 0
+
+    - name: Get node storage # noqa: risky-shell-pipe
+      ansible.builtin.shell: |
+        pvesh get /nodes/$(hostname -s)/storage --output-format json \
+          | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('data', d) if isinstance(d, dict) else d))"
+      register: _node_storage_raw
+      changed_when: false
+      failed_when: _node_storage_raw.rc != 0 or _node_storage_raw.stdout | length == 0
+
+    - name: Set node facts
+      ansible.builtin.set_fact:
+        node_status: "{{ _node_status_raw.stdout | from_json }}"
+        node_qemu: "{{ _node_qemu_raw.stdout | from_json }}"
+        node_lxc: "{{ _node_lxc_raw.stdout | from_json }}"
+        node_storage: "{{ _node_storage_raw.stdout | from_json }}"
+
+    - name: Assert node_status has expected fields
+      ansible.builtin.assert:
+        that:
+          - "'cpuinfo' in node_status"
+          - "'memory' in node_status"
+          - "'loadavg' in node_status"
+        fail_msg: >-
+          Unexpected node_status structure on {{ inventory_hostname }}.
+          Present keys: {{ node_status.keys() | list }}.
+          Full value: {{ node_status }}
+
+- name: Render capacity report
+  hosts: localhost
+  gather_facts: false
+  vars:
+    target_vcpu: 4
+    target_ram_gb: 4
+    target_disk_gb: 50
+    report_output_path: /tmp/proxmox-capacity-report.txt
+
+  tasks:
+    - name: Render capacity report
+      ansible.builtin.template:
+        src: templates/capacity-report.j2
+        dest: "{{ report_output_path }}"
+        mode: "0644"
+
+    - name: Show report path
+      ansible.builtin.debug:
+        msg: "Report written to {{ report_output_path }}"

@@ -1,0 +1,18 @@
+---
+###############################################################################
+# Proxmox VE Configuration
+#
+# Configures all nodes in the [proxmox] inventory group:
+#   - ACME / Let's Encrypt certificates via Cloudflare DNS-01 challenge
+#
+# Usage:
+#   ./scripts/run-proxmox.sh                    # full configuration
+#   ./scripts/run-proxmox.sh --tags acme        # ACME certs only
+###############################################################################
+
+- name: Configure proxmox hosts
+  hosts: proxmox
+  gather_facts: true
+  serial: 1
+  roles:
+    - proxmox

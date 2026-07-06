@@ -1,0 +1,71 @@
+---
+- name: Ensure /etc/caddy exists
+  ansible.builtin.file:
+    path: /etc/caddy
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0755"
+
+- name: Template caddyfile to staging path
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile.staged
+    owner: caddy
+    group: caddy
+    mode: "0644"
+
+- name: Fmt staged caddyfile
+  ansible.builtin.command:
+    cmd: caddy fmt --overwrite /etc/caddy/Caddyfile.staged
+  changed_when: false
+
+- name: Deploy formatted caddyfile
+  ansible.builtin.copy:
+    src: /etc/caddy/Caddyfile.staged
+    dest: /etc/caddy/Caddyfile
+    remote_src: true
+    owner: caddy
+    group: caddy
+    mode: "0644"
+  notify: Restart caddy
+
+- name: Template caddy environment file
+  ansible.builtin.template:
+    src: caddy.env.j2
+    dest: /etc/caddy/caddy.env
+    owner: caddy
+    group: caddy
+    mode: "0600"
+  no_log: true
+  notify: Restart caddy
+
+- name: Create systemd drop-in directory for caddy
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Install systemd drop-in to load caddy environment file
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      EnvironmentFile=/etc/caddy/caddy.env
+    dest: /etc/systemd/system/caddy.service.d/env.conf
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart caddy
+
+# Flush here so daemon-reload runs (picks up EnvironmentFile drop-in) and caddy
+# restarts with env vars loaded — before the "enable and start" task below.
+# On initial install this prevents "reload caddy" failing against a caddy process
+# that was started without the env vars.
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start caddy
+  ansible.builtin.service:
+    name: caddy
+    enabled: true
+    state: started

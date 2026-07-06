@@ -1,0 +1,75 @@
+---
+###############################################################################
+# ACME / Let's Encrypt via Cloudflare DNS-01
+#
+# Cluster-level tasks (run_once): ACME account + DNS plugin
+# Node-level tasks: domain config + certificate order
+###############################################################################
+
+# ─── Cluster-level ────────────────────────────────────────────────────────────
+
+- name: Check existing acme accounts
+  ansible.builtin.command: pvenode acme account list
+  register: acme_account_list # noqa: var-naming[no-role-prefix]
+  changed_when: false
+  run_once: true
+
+- name: Register acme account with let's encrypt # noqa: no-changed-when risky-shell-pipe
+  ansible.builtin.shell: |
+    echo "y" | pvenode acme account register {{ acme_account_name }} {{ acme_contact }} \
+      --directory {{ acme_directory }}
+  run_once: true
+  when: acme_account_name not in acme_account_list.stdout
+
+- name: Check existing acme dns plugins
+  ansible.builtin.command: pvenode acme plugin list
+  register: acme_plugin_list # noqa: var-naming[no-role-prefix]
+  changed_when: false
+  run_once: true
+
+- name: Write cloudflare credentials to temp file
+  ansible.builtin.copy:
+    content: "CF_Token={{ cloudflare_token }}\nCF_Account_ID={{ cloudflare_account_id }}\n"
+    dest: /tmp/cf-acme-creds.conf
+    mode: "0600"
+  run_once: true
+  no_log: true
+  when: acme_dns_plugin_id not in acme_plugin_list.stdout
+
+- name: Configure cloudflare dns plugin # noqa: no-changed-when
+  ansible.builtin.command: >-
+    pvenode acme plugin add dns {{ acme_dns_plugin_id }}
+    --api {{ acme_dns_plugin }}
+    --data /tmp/cf-acme-creds.conf
+  run_once: true
+  when: acme_dns_plugin_id not in acme_plugin_list.stdout
+
+- name: Remove cloudflare credentials temp file
+  ansible.builtin.file:
+    path: /tmp/cf-acme-creds.conf
+    state: absent
+  run_once: true
+
+# ─── Per-node ─────────────────────────────────────────────────────────────────
+
+- name: Get node config
+  ansible.builtin.command: pvesh get /nodes/{{ ansible_hostname }}/config --output-format json
+  register: node_config # noqa: var-naming[no-role-prefix]
+  changed_when: false
+
+- name: Configure acme domain on node # noqa: no-changed-when
+  ansible.builtin.command: >-
+    pvesh set /nodes/{{ ansible_hostname }}/config
+    --acmedomain0 domain={{ acme_domain }},plugin={{ acme_dns_plugin_id }}
+  when: acme_domain not in node_config.stdout
+
+- name: Check if acme certificate exists
+  ansible.builtin.stat:
+    path: /etc/pve/nodes/{{ ansible_hostname }}/pveproxy-ssl.pem
+  register: acme_cert # noqa: var-naming[no-role-prefix]
+
+- name: Order acme certificate # noqa: no-changed-when
+  ansible.builtin.command: pvenode acme cert order
+  when: not acme_cert.stat.exists
+  async: 300
+  poll: 15

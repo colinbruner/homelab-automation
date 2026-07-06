@@ -1,0 +1,9 @@
+---
+- name: Restart technitium
+  ansible.builtin.service:
+    name: "{{ technitium_service }}"
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true

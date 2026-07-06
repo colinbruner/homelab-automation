@@ -1,0 +1,8 @@
+---
+- name: Import ACME tasks
+  ansible.builtin.import_tasks: acme.yml
+  tags: acme
+
+- name: Import OIDC tasks
+  ansible.builtin.import_tasks: oidc.yml
+  tags: oidc
