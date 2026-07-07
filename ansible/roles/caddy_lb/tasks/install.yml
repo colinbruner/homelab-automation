@@ -11,6 +11,21 @@
     cmd: "curl -fsSL https://get.docker.com | sh"
     creates: /usr/bin/docker
 
+# Pre-refactor hosts had these written by a shell-based apt setup (curl | gpg).
+# Their Signed-By values conflict with the deb822_repository entry below for
+# the same source, which makes apt refuse to read the source list entirely.
+- name: Remove legacy caddy apt repository file
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/caddy-stable.list
+    state: absent
+  register: caddy_lb_legacy_repo_file
+
+- name: Remove legacy caddy gpg keyring
+  ansible.builtin.file:
+    path: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    state: absent
+  register: caddy_lb_legacy_repo_key
+
 - name: Add caddy apt repository
   ansible.builtin.deb822_repository:
     name: caddy-stable
@@ -24,7 +39,10 @@
 - name: Update apt cache after repo change  # noqa: no-handler
   ansible.builtin.apt:
     update_cache: true
-  when: caddy_lb_repo is changed
+  when: >-
+    caddy_lb_repo is changed
+    or caddy_lb_legacy_repo_file is changed
+    or caddy_lb_legacy_repo_key is changed
 
 - name: Install caddy base package
   ansible.builtin.apt:
