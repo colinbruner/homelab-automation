@@ -5,11 +5,20 @@
       - nfs-common
     state: present
 
+# If the share is already mounted, the mount point belongs to the NFS server
+# (root_squash forbids chmod from the client) — only create/chmod it when unmounted.
+- name: Check if nfs already mounted
+  ansible.builtin.command: mountpoint -q {{ nfs_mount_point }}
+  register: nfs_mount_mounted
+  changed_when: false
+  failed_when: false
+
 - name: Create mount point
   ansible.builtin.file:
     path: "{{ nfs_mount_point }}"
     state: directory
     mode: "{{ nfs_mount_mode }}"
+  when: nfs_mount_mounted.rc != 0
 
 - name: Mount nfs share
   ansible.posix.mount:

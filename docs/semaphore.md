@@ -32,6 +32,35 @@ cluster:
   vault** — Semaphore only ever reads secrets, and the blast radius of a leaked
   token should stay small. Playbook runs inherit these env vars, which is how
   the `community.general.onepassword` lookups in `group_vars/` resolve.
+- **`op` CLI binary**: the `community.general.onepassword` lookup is a wrapper
+  around the 1Password `op` CLI — even in Connect mode it just passes
+  `OP_CONNECT_HOST`/`OP_CONNECT_TOKEN` through to the binary. Lookups run on
+  the Ansible controller (the Semaphore pod), so `op` must be present **inside
+  the Semaphore container**; the remote hosts never need it. The official
+  image does not ship it. Rather than maintaining a custom image, use an init
+  container that copies the binary from 1Password's official image into a
+  shared volume, mounted with `subPath` so it lands on the PATH Semaphore
+  builds for task runs:
+
+  ```yaml
+  initContainers:
+    - name: install-op
+      image: 1password/op:2
+      command: ["cp", "/usr/local/bin/op", "/op-bin/op"]
+      volumeMounts:
+        - name: op-bin
+          mountPath: /op-bin
+  containers:
+    - name: semaphore
+      # ...existing config...
+      volumeMounts:
+        - name: op-bin
+          mountPath: /usr/local/bin/op
+          subPath: op
+  volumes:
+    - name: op-bin
+      emptyDir: {}
+  ```
 - **Network egress**: the pod must be able to reach the lab management networks
   `192.168.1.0/24` and `192.168.10.0/24` over SSH. Verify this with a debug pod
   (e.g. `kubectl run -it --rm debug --image=busybox -- sh`, then try connecting
