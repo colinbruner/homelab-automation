@@ -9,6 +9,3 @@
 
 - name: Import pxe server configuration
   ansible.builtin.import_playbook: pxe.yml
-
-- name: Import warp connector configuration
-  ansible.builtin.import_playbook: warp-connector.yml
