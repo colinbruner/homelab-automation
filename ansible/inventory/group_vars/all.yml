@@ -3,4 +3,4 @@
 # Public keys are not secrets.
 lab_authorized_pubkeys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPE/CB9u3hsHE6/8vnQs4ZB4KFNDQsTKkce5SrPQD4gH"
-  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP/kp6y2yMVE+opYXdXr/Zs9wSIpEpJzC7v7YO+Hbsdi semaphore@lab" # semaphore runner key
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAGUKMAn+4RvLVwwLNVjciQZx0NCKTrFEBmiJdpym1/ semaphore@lab" # semaphore runner key
