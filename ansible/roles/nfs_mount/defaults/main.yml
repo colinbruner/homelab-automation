@@ -1,0 +1,10 @@
+---
+nfs_mount_server: ""
+nfs_mount_export: ""
+nfs_mount_point: ""
+nfs_mount_opts: "rw,sync,hard"
+# Whether to mount at boot (writes fstab 'auto'); pxe historically used boot: false
+nfs_mount_boot: true
+nfs_mount_mode: "0755"
+# Subdirectories to create under the mount point: [{path: "pxe/tftp", mode: "0755"}]
+nfs_mount_subdirs: []

@@ -6,93 +6,93 @@
 # Cluster-level: realm is shared across all nodes via /etc/pve/, run once.
 ###############################################################################
 
-- name: Check existing authentication realms # noqa: var-naming[no-role-prefix]
+- name: Check existing authentication realms
   ansible.builtin.command: pveum realm list --output-format json
-  register: realm_list
+  register: proxmox_realm_list
   changed_when: false
   run_once: true
 
 - name: Configure pocket-id oidc realm # noqa: no-changed-when
   ansible.builtin.command: >-
-    pveum realm add {{ oidc_realm_name }}
+    pveum realm add {{ proxmox_oidc_realm_name }}
     --type openid
-    --issuer-url {{ oidc_issuer_url }}
-    --client-id {{ oidc_client_id }}
-    --client-key {{ oidc_client_secret }}
-    --username-claim {{ oidc_username_claim }}
-    --scopes "{{ oidc_scopes }}"
-    --groups-claim {{ oidc_groups_claim }}
-    --autocreate {{ oidc_autocreate | int }}
-    --comment "{{ oidc_comment }}"
+    --issuer-url {{ proxmox_oidc_issuer_url }}
+    --client-id {{ proxmox_oidc_client_id }}
+    --client-key {{ proxmox_oidc_client_secret }}
+    --username-claim {{ proxmox_oidc_username_claim }}
+    --scopes "{{ proxmox_oidc_scopes }}"
+    --groups-claim {{ proxmox_oidc_groups_claim }}
+    --autocreate {{ proxmox_oidc_autocreate | int }}
+    --comment "{{ proxmox_oidc_comment }}"
   run_once: true
   no_log: true
-  when: oidc_realm_name not in realm_list.stdout
+  when: proxmox_oidc_realm_name not in proxmox_realm_list.stdout
 
 - name: Get current realm config
-  ansible.builtin.command: pvesh get /access/domains/{{ oidc_realm_name }} --output-format json
-  register: realm_config # noqa: var-naming[no-role-prefix]
+  ansible.builtin.command: pvesh get /access/domains/{{ proxmox_oidc_realm_name }} --output-format json
+  register: proxmox_realm_config
   changed_when: false
   run_once: true
-  when: oidc_realm_name in realm_list.stdout
+  when: proxmox_oidc_realm_name in proxmox_realm_list.stdout
 
-- name: Check if realm config has drifted # noqa: var-naming[no-role-prefix]
+- name: Check if realm config has drifted
   ansible.builtin.set_fact:
-    oidc_realm_drifted: >-
+    proxmox_oidc_realm_drifted: >-
       {{
-        (realm_config.stdout | from_json).get('username-claim') != oidc_username_claim or
-        (realm_config.stdout | from_json).get('issuer-url')     != oidc_issuer_url or
-        (realm_config.stdout | from_json).get('client-id')      != oidc_client_id or
-        (realm_config.stdout | from_json).get('scopes')         != oidc_scopes or
-        (realm_config.stdout | from_json).get('groups-claim')   != oidc_groups_claim
+        (proxmox_realm_config.stdout | from_json).get('username-claim') != proxmox_oidc_username_claim or
+        (proxmox_realm_config.stdout | from_json).get('issuer-url')     != proxmox_oidc_issuer_url or
+        (proxmox_realm_config.stdout | from_json).get('client-id')      != proxmox_oidc_client_id or
+        (proxmox_realm_config.stdout | from_json).get('scopes')         != proxmox_oidc_scopes or
+        (proxmox_realm_config.stdout | from_json).get('groups-claim')   != proxmox_oidc_groups_claim
       }}
   run_once: true
-  when: oidc_realm_name in realm_list.stdout
+  when: proxmox_oidc_realm_name in proxmox_realm_list.stdout
 
 - name: Delete pocket-id oidc realm (config has drifted) # noqa: no-changed-when
-  ansible.builtin.command: pveum realm del {{ oidc_realm_name }}
+  ansible.builtin.command: pveum realm del {{ proxmox_oidc_realm_name }}
   run_once: true
   when:
-    - oidc_realm_name in realm_list.stdout
-    - oidc_realm_drifted | default(false)
+    - proxmox_oidc_realm_name in proxmox_realm_list.stdout
+    - proxmox_oidc_realm_drifted | default(false)
 
 - name: Recreate pocket-id oidc realm (config has drifted) # noqa: no-changed-when
   ansible.builtin.command: >-
-    pveum realm add {{ oidc_realm_name }}
+    pveum realm add {{ proxmox_oidc_realm_name }}
     --type openid
-    --issuer-url {{ oidc_issuer_url }}
-    --client-id {{ oidc_client_id }}
-    --client-key {{ oidc_client_secret }}
-    --username-claim {{ oidc_username_claim }}
-    --scopes "{{ oidc_scopes }}"
-    --groups-claim {{ oidc_groups_claim }}
-    --autocreate {{ oidc_autocreate | int }}
-    --comment "{{ oidc_comment }}"
+    --issuer-url {{ proxmox_oidc_issuer_url }}
+    --client-id {{ proxmox_oidc_client_id }}
+    --client-key {{ proxmox_oidc_client_secret }}
+    --username-claim {{ proxmox_oidc_username_claim }}
+    --scopes "{{ proxmox_oidc_scopes }}"
+    --groups-claim {{ proxmox_oidc_groups_claim }}
+    --autocreate {{ proxmox_oidc_autocreate | int }}
+    --comment "{{ proxmox_oidc_comment }}"
   run_once: true
   no_log: true
   when:
-    - oidc_realm_name in realm_list.stdout
-    - oidc_realm_drifted | default(false)
+    - proxmox_oidc_realm_name in proxmox_realm_list.stdout
+    - proxmox_oidc_realm_drifted | default(false)
 
 # ─── Default realm ────────────────────────────────────────────────────────────
 
 - name: Set pocket-id as default login realm # noqa: no-changed-when
-  ansible.builtin.command: pveum realm modify {{ oidc_realm_name }} --default 1
+  ansible.builtin.command: pveum realm modify {{ proxmox_oidc_realm_name }} --default 1
   run_once: true
-  when: oidc_default_realm | bool
+  when: proxmox_oidc_default_realm | bool
 
 # ─── Group → role mappings ────────────────────────────────────────────────────
 
 - name: Get existing groups
   ansible.builtin.command: pveum group list --output-format json
-  register: pve_groups # noqa: var-naming[no-role-prefix]
+  register: proxmox_pve_groups
   changed_when: false
   run_once: true
 
 - name: Ensure oidc groups exist # noqa: no-changed-when
   ansible.builtin.command: pveum group add {{ item.group }}
   run_once: true
-  when: item.group not in pve_groups.stdout
-  loop: "{{ oidc_group_role_mappings }}"
+  when: item.group not in proxmox_pve_groups.stdout
+  loop: "{{ proxmox_oidc_group_role_mappings }}"
 
 - name: Assign roles to groups at root path # noqa: no-changed-when
   ansible.builtin.command: >-
@@ -100,4 +100,4 @@
     --groups {{ item.group }}
     --role {{ item.role }}
   run_once: true
-  loop: "{{ oidc_group_role_mappings }}"
+  loop: "{{ proxmox_oidc_group_role_mappings }}"

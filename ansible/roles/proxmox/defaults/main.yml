@@ -1,34 +1,35 @@
+---
 # ACME / Let's Encrypt
-acme_account_name: default # noqa: var-naming[no-role-prefix]
-acme_directory: https://acme-v02.api.letsencrypt.org/directory # noqa: var-naming[no-role-prefix]
+proxmox_acme_account_name: default
+proxmox_acme_directory: https://acme-v02.api.letsencrypt.org/directory
 
-# acme_contact: must be provided at runtime (email address)
-# e.g. -e "acme_contact=admin@example.com"
+# proxmox_acme_contact is resolved at runtime from 1Password Connect via
+# group_vars/proxmox.yml lookups
 
 # Cloudflare DNS plugin
-acme_dns_plugin_id: cloudflare # noqa: var-naming[no-role-prefix]
-acme_dns_plugin: cf # noqa: var-naming[no-role-prefix]
+proxmox_acme_dns_plugin_id: cloudflare
+proxmox_acme_dns_plugin: cf
 
-# cloudflare_token and cloudflare_account_id must be provided at runtime
-# e.g. via scripts/run-proxmox.sh which pulls them from 1Password
+# proxmox_cloudflare_token and proxmox_cloudflare_account_id are resolved at
+# runtime from 1Password Connect via group_vars/proxmox.yml lookups
 
-# acme_domain: set per-host in inventory/host_vars/
+# proxmox_acme_domain: set per-host in inventory/host_vars/
 
 # OIDC / Pocket ID
-oidc_realm_name: pocket-id # noqa: var-naming[no-role-prefix]
-oidc_username_claim: preferred_username # noqa: var-naming[no-role-prefix]
-oidc_scopes: "openid email profile groups" # noqa: var-naming[no-role-prefix]
-oidc_groups_claim: groups # noqa: var-naming[no-role-prefix]
-oidc_autocreate: true # noqa: var-naming[no-role-prefix]
-oidc_default_realm: true # noqa: var-naming[no-role-prefix]
-oidc_comment: Pocket ID # noqa: var-naming[no-role-prefix]
+proxmox_oidc_realm_name: pocket-id
+proxmox_oidc_username_claim: preferred_username
+proxmox_oidc_scopes: "openid email profile groups"
+proxmox_oidc_groups_claim: groups
+proxmox_oidc_autocreate: true
+proxmox_oidc_default_realm: true
+proxmox_oidc_comment: Pocket ID
 
 # Group → role mappings applied at the root path (/)
-oidc_group_role_mappings: # noqa: var-naming[no-role-prefix]
+proxmox_oidc_group_role_mappings:
   - group: admin
     role: Administrator
   - group: readonly
     role: PVEAuditor
 
-# oidc_issuer_url, oidc_client_id, oidc_client_secret must be provided at runtime
-# e.g. via scripts/run-proxmox.sh which pulls them from 1Password
+# proxmox_oidc_issuer_url, proxmox_oidc_client_id, proxmox_oidc_client_secret are
+# resolved at runtime from 1Password Connect via group_vars/proxmox.yml lookups

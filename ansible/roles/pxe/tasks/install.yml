@@ -4,5 +4,5 @@
   # if only relying on 1, this can be tweaked
 - name: Install required packages
   ansible.builtin.apt:
-    pkg: "{{ packages + ipxe_packages }}"
+    pkg: "{{ pxe_packages + pxe_ipxe_packages }}"
     update_cache: true

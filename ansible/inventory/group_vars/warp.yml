@@ -1,2 +1,3 @@
 ---
 ansible_user: pi
+warp_connector_token: "{{ lookup('community.general.onepassword', 'cloudflare-warp-connector', field='token', vault='lab') }}"

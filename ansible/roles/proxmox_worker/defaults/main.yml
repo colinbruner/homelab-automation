@@ -1,0 +1,6 @@
+---
+proxmox_worker_vcpus: 4
+proxmox_worker_ram_mb: 4096
+proxmox_worker_disk_gb: 50
+proxmox_worker_bridge: vmbr0
+proxmox_worker_storage: "" # empty = auto-select largest images-capable pool

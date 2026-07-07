@@ -1,0 +1,51 @@
+---
+- name: Fail if no VM-capable storage pool found
+  ansible.builtin.fail:
+    msg: >-
+      No storage pool with 'images' content found on {{ inventory_hostname }}.
+      Available pools: {{ node_storage | map(attribute='storage') | list | join(', ') }}
+  when:
+    - proxmox_worker_storage == ''
+    - node_storage | selectattr('content', 'search', 'images') | list | length == 0
+
+- name: Select default storage pool # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    _default_storage: >-
+      {{ proxmox_worker_storage if proxmox_worker_storage != ''
+         else (node_storage
+               | selectattr('content', 'search', 'images')
+               | sort(attribute='avail')
+               | last).storage }}
+
+- name: Create and start assigned VMs # noqa: var-naming[no-role-prefix]
+  ansible.builtin.shell: |
+    VMID=$(pvesh get /cluster/nextid)
+    STORAGE="{{ item.storage if 'storage' in item and item.storage != '' else _default_storage }}"
+    qm create "$VMID" \
+      --name "{{ item.name }}" \
+      --memory {{ item.ram_mb | default(proxmox_worker_ram_mb) }} \
+      --cores {{ item.vcpus | default(proxmox_worker_vcpus) }} \
+      --sockets 1 \
+      --cpu x86-64-v2-AES \
+      --scsihw virtio-scsi-pci \
+      --scsi0 "${STORAGE}:{{ item.disk_gb | default(proxmox_worker_disk_gb) }}" \
+      --net0 "virtio,bridge={{ item.bridge | default(proxmox_worker_bridge) }}" \
+      --boot "order=net0;scsi0" \
+      --ostype l26 \
+      --agent 1
+    qm start "$VMID"
+    echo "$VMID"
+  args:
+    executable: /bin/bash
+  register: _vm_create_results
+  changed_when: true
+  loop: "{{ node_workers }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Summarize created VMs
+  ansible.builtin.debug:
+    msg: "Created '{{ item.item.name }}' → VM ID {{ item.stdout_lines | last | trim }} on {{ inventory_hostname }}"
+  loop: "{{ _vm_create_results.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"

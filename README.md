@@ -71,10 +71,7 @@ homelab-automation/
 │   │   └── proxmox/             # Proxmox ACME + OIDC configuration
 │   └── scripts/
 │       ├── provision-pxe-lxc.sh # LXC provisioning via pct (uses desktop op CLI)
-│       ├── create-lxc.sh        # Raw pct commands for LXC creation
-│       ├── run-dns-lb.sh        # Secret-fetching wrapper (until Phase 3)
-│       ├── run-warp-connector.sh
-│       └── run-proxmox.sh
+│       └── create-lxc.sh        # Raw pct commands for LXC creation
 └── build/
     ├── ipxe/                       # Custom iPXE bootloader
     │   ├── build.sh                # Build script
@@ -101,17 +98,33 @@ All commands run from `ansible/` (`cd ansible`). One-time: `ansible-galaxy colle
 
 | Old command | New command |
 |---|---|
-| `ansible/dns-lb/install.sh` | `./scripts/run-dns-lb.sh` (until secrets migration: direct `ansible-playbook playbooks/dns-lb.yml`) |
+| `ansible/dns-lb/install.sh` | `ansible-playbook playbooks/dns-lb.yml` |
 | `ansible/pxe/install.sh <ip>` | `ansible-playbook playbooks/pxe.yml` |
 | `ansible/pxe/Makefile download-talos` | `ansible-playbook playbooks/ops/download-talos.yml` |
 | `ansible/pxe/provision.sh <proxmox-ip>` | `ansible/scripts/provision-pxe-lxc.sh <proxmox-ip>` |
-| `ansible/warp-connector/install.sh <ip>` | `./scripts/run-warp-connector.sh` |
-| `ansible/proxmox/configure.sh` | `./scripts/run-proxmox.sh` |
+| `ansible/warp-connector/install.sh <ip>` | `ansible-playbook playbooks/warp-connector.yml` |
+| `ansible/proxmox/configure.sh` | `ansible-playbook playbooks/proxmox.yml` |
 | `ansible/proxmox/assess.sh` | `ansible-playbook playbooks/ops/capacity-report.yml` |
 | `ansible/proxmox/provision-worker.sh` | `ansible-playbook playbooks/ops/provision-worker.yml` |
 | (new) converge everything | `ansible-playbook playbooks/site.yml` |
 
-> **Note:** `site.yml` full runs require the secrets the wrapper scripts supply. It becomes directly runnable in Phase 3 when secrets migrate to inventory lookups.
+### Secrets
+
+Playbooks resolve secrets at runtime from the in-cluster 1Password Connect server.
+Export before running anything that touches secrets:
+
+    export OP_CONNECT_HOST="https://<connect-host>"   # cluster Connect endpoint
+    export OP_CONNECT_TOKEN="$(op read 'op://lab/onepassword-connect/token')"
+
+Lint and --syntax-check never need these (lookups are lazy).
+
+## Scheduled applies (Semaphore)
+
+`playbooks/site.yml` runs weekly from a [Semaphore UI](https://semaphoreui.com/)
+instance in the homelab Kubernetes cluster, so **merging to `main` means the
+change is applied on the next scheduled run**. Ops playbooks are never
+scheduled. See [docs/semaphore.md](docs/semaphore.md) for the deployment and
+configuration runbook.
 
 ## Usage
 

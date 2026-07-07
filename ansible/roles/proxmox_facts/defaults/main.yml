@@ -1,0 +1,4 @@
+---
+# Which pvesh node endpoints to fetch: status, qemu, lxc, storage
+proxmox_facts_endpoints:
+  - status

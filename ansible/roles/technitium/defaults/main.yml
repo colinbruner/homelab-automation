@@ -29,12 +29,12 @@ technitium_local_zone: ""
 technitium_local_records: []
 
 # NFS backup
-nfs_server: "192.168.10.5"  # noqa: var-naming[no-role-prefix]
-nfs_export: "/var/nfs/shared/homelab"  # noqa: var-naming[no-role-prefix]
-nfs_mount_point: "/mnt/backup/homelab"  # noqa: var-naming[no-role-prefix]
-nfs_mount_opts: "rw,sync,hard,intr,rsize=8192,wsize=8192"  # noqa: var-naming[no-role-prefix]
+technitium_backup_nfs_server: "192.168.10.5"
+technitium_backup_nfs_export: "/var/nfs/shared/homelab"
+technitium_backup_mount_point: "/mnt/backup/homelab"
+technitium_backup_mount_opts: "rw,sync,hard,intr,rsize=8192,wsize=8192"
 
 # Backup retention (days)
-backup_retain_days: 7  # noqa: var-naming[no-role-prefix]
+technitium_backup_retain_days: 7
 # Time to run nightly backup (systemd OnCalendar format)
-backup_schedule: "02:00:00"  # noqa: var-naming[no-role-prefix]
+technitium_backup_schedule: "02:00:00"

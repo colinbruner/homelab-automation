@@ -1,0 +1,29 @@
+---
+- name: Install sudo
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+  when: lab_user_sudo
+
+- name: Create user
+  ansible.builtin.user:
+    name: "{{ lab_user_name }}"
+    shell: "{{ lab_user_shell }}"
+    groups: "{{ ['sudo'] if lab_user_sudo else [] }}"
+    append: true
+    state: present
+
+- name: Add ssh public keys
+  ansible.posix.authorized_key:
+    user: "{{ lab_user_name }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ lab_user_pubkeys }}"
+
+- name: Allow passwordless sudo
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ lab_user_name }}"
+    content: "{{ lab_user_name }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: visudo -cf %s
+  when: lab_user_sudo

@@ -5,9 +5,12 @@
 # Configures all nodes in the [proxmox] inventory group:
 #   - ACME / Let's Encrypt certificates via Cloudflare DNS-01 challenge
 #
+# Secrets (Cloudflare token, OIDC credentials) are resolved at runtime from
+# 1Password Connect via group_vars/proxmox.yml lookups.
+#
 # Usage:
-#   ./scripts/run-proxmox.sh                    # full configuration
-#   ./scripts/run-proxmox.sh --tags acme        # ACME certs only
+#   ansible-playbook playbooks/proxmox.yml                # full configuration
+#   ansible-playbook playbooks/proxmox.yml --tags acme    # ACME certs only
 ###############################################################################
 
 - name: Configure proxmox hosts
@@ -15,4 +18,12 @@
   gather_facts: true
   serial: 1
   roles:
+    - role: lab_user
+      become: true
+      vars:
+        lab_user_name: root
+        lab_user_sudo: false
+        lab_user_pubkeys: "{{ lab_authorized_pubkeys }}"
+      tags: user
+
     - proxmox
