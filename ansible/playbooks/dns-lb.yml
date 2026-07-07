@@ -3,6 +3,17 @@
   hosts: dns_lb
   gather_facts: false
   pre_tasks:
+    # Pre-refactor hosts have a legacy shell-based caddy apt source whose Signed-By
+    # conflicts with the deb822 source added by the caddy_lb role, which breaks
+    # `apt-get update` for every task, including this one. No python interpreter
+    # is guaranteed yet, so clean it up via raw before bootstrapping python3.
+    - name: Remove legacy caddy apt repository conflicting with deb822 source
+      ansible.builtin.raw: >-
+        rm -f /etc/apt/sources.list.d/caddy-stable.list
+        /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+      become: true
+      changed_when: false
+
     - name: Bootstrap python3
       ansible.builtin.raw: apt-get update && apt-get install -y python3
       become: true
