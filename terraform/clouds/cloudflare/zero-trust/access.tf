@@ -30,6 +30,15 @@ resource "cloudflare_record" "dashboard" {
   proxied = true
 }
 
+resource "cloudflare_record" "semaphore" {
+  zone_id = var.cloudflare_zone_id
+  name    = "semaphore"
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.homelab.id}.cfargotunnel.com"
+  proxied = true
+}
+
+
 # ---------------------------------------------------------------------------
 # Access applications — protect public hostnames with Pocket ID authentication
 #
