@@ -38,3 +38,9 @@ technitium_backup_mount_opts: "rw,sync,hard,intr,rsize=8192,wsize=8192"
 technitium_backup_retain_days: 7
 # Time to run nightly backup (systemd OnCalendar format)
 technitium_backup_schedule: "02:00:00"
+
+# Chronos job monitoring (https://chronos.bruner.family) — Path A ping-style
+# notifications. Token is per-host (one Chronos job per nameserver); must be
+# supplied via host_vars (1Password lookup), e.g. host_vars/ns1.yml.
+technitium_backup_chronos_base_url: "https://chronos.bruner.family/ping"
+technitium_backup_chronos_token: ""
