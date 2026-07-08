@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Technitium DNS nightly backup script.
+# Managed by Ansible — do not edit manually.
+set -euo pipefail
+
+SOURCE="{{ technitium_data_dir }}/"
+DEST="{{ technitium_backup_mount_point }}/dns/{{ inventory_hostname }}"
+DATE=$(date +%Y%m%d-%H%M%S)
+ARCHIVE="${DEST}/dns-backup-${DATE}.tar.gz"
+LOCK_FILE="/var/lock/dns-backup.lock"
+CHRONOS_BASE="{{ technitium_backup_chronos_base_url }}/{{ technitium_backup_chronos_token }}"
+RUN_ID="$(date +%s)-$$"
+START_TIME=$(date +%s)
+
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+  echo "[$(date)] Another backup run is already in progress; exiting."
+  exit 1
+fi
+
+notify() {
+  local suffix="$1" msg="${2:-}"
+  local args=(-fsS -G --max-time 10 --data-urlencode "rid=${RUN_ID}")
+  if [[ -n "${msg}" ]]; then
+    args+=(--data-urlencode "msg=${msg}")
+  fi
+  curl "${args[@]}" "${CHRONOS_BASE}${suffix}" >/dev/null 2>&1 || true
+}
+trap 'notify "/fail" "backup failed (exit $?)"' ERR
+
+notify "/start"
+echo "[$(date)] Starting DNS backup for {{ inventory_hostname }}..."
+
+# Sync to a staging directory then archive. -rlptD (not -a) so we never try
+# to preserve owner/group: the NFS export uses root_squash, and chown/chgrp
+# from the squashed client fails.
+rsync -rlptD --delete "${SOURCE}" "${DEST}/latest/"
+tar -czf "${ARCHIVE}" -C "${DEST}" latest/
+sha256sum "${ARCHIVE}" | sed "s|${DEST}/||" > "${ARCHIVE}.sha256"
+
+# Remove backups (and their checksums) older than {{ technitium_backup_retain_days }} days
+find "${DEST}" -maxdepth 1 -name "dns-backup-*.tar.gz*" -mtime +{{ technitium_backup_retain_days }} -delete
+
+DURATION=$(( $(date +%s) - START_TIME ))
+notify "" "backup complete in ${DURATION}s: $(basename "${ARCHIVE}")"
+echo "[$(date)] Backup complete: ${ARCHIVE} (${DURATION}s)"
