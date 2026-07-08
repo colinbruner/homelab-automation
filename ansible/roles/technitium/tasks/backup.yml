@@ -3,7 +3,16 @@
   ansible.builtin.apt:
     pkg:
       - rsync
+      - curl
     state: present
+
+- name: Ensure chronos backup token is configured
+  ansible.builtin.assert:
+    that:
+      - technitium_backup_chronos_token | length > 0
+    fail_msg: >-
+      technitium_backup_chronos_token must be set (see host_vars/ns1.yml /
+      host_vars/ns2.yml) for Chronos backup notifications.
 
 - name: Mount nfs backup share
   ansible.builtin.include_role:
@@ -15,63 +24,27 @@
     nfs_mount_opts: "{{ technitium_backup_mount_opts }}"
     nfs_mount_mode: "0750"
     nfs_mount_subdirs:
-      - path: dns
+      - path: "dns/{{ inventory_hostname }}"
         mode: "0750"
 
 - name: Install backup script
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: dns-backup.sh.j2
     dest: /usr/local/bin/dns-backup.sh
     mode: "0750"
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      SOURCE="{{ technitium_data_dir }}/"
-      DEST="{{ technitium_backup_mount_point }}/dns"
-      DATE=$(date +%Y%m%d-%H%M%S)
-      ARCHIVE="${DEST}/dns-backup-${DATE}.tar.gz"
-
-      echo "[$(date)] Starting DNS backup..."
-
-      # Sync to a staging directory then archive
-      rsync -a --delete "${SOURCE}" "${DEST}/latest/"
-      tar -czf "${ARCHIVE}" -C "${DEST}" latest/
-
-      # Remove backups older than {{ technitium_backup_retain_days }} days
-      find "${DEST}" -maxdepth 1 -name "dns-backup-*.tar.gz" -mtime +{{ technitium_backup_retain_days }} -delete
-
-      echo "[$(date)] Backup complete: ${ARCHIVE}"
 
 - name: Install backup systemd service unit
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: dns-backup.service.j2
     dest: /etc/systemd/system/dns-backup.service
     mode: "0644"
-    content: |
-      [Unit]
-      Description=Technitium DNS nightly backup
-      After=network.target
-
-      [Service]
-      Type=oneshot
-      ExecStart=/usr/local/bin/dns-backup.sh
-      StandardOutput=journal
-      StandardError=journal
   notify: Reload systemd
 
 - name: Install backup systemd timer unit
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: dns-backup.timer.j2
     dest: /etc/systemd/system/dns-backup.timer
     mode: "0644"
-    content: |
-      [Unit]
-      Description=Run Technitium DNS backup nightly
-
-      [Timer]
-      OnCalendar=*-*-* {{ technitium_backup_schedule }}
-      Persistent=true
-
-      [Install]
-      WantedBy=timers.target
   notify: Reload systemd
 
 - name: Flush handlers
