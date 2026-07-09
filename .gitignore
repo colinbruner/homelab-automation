@@ -6,6 +6,10 @@ build/bin/*
 build/manifests/**
 build/vendor/**
 
+# Python
+__pycache__/
+*.pyc
+
 # Terraform
 terraform/**/.terraform/
 terraform/**/terraform.tfvars
