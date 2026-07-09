@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import time
 import unittest
 import urllib.parse
 from unittest import mock
@@ -90,6 +91,50 @@ class ChronosSiteStatusPingTests(unittest.TestCase):
             chronos_site_status.urllib.request, "urlopen", side_effect=OSError("boom")
         ):
             cb._ping("/fail", "some error")  # must not raise
+
+
+class FakeStats:
+    def __init__(self, processed=None, failures=None, dark=None):
+        self.processed = processed or {}
+        self.failures = failures or {}
+        self.dark = dark or {}
+
+
+class ChronosSiteStatusStatsTests(unittest.TestCase):
+    def test_noop_when_inactive(self):
+        cb = chronos_site_status.CallbackModule()
+        cb._active = False
+        with mock.patch.object(cb, "_ping") as ping:
+            cb.v2_playbook_on_stats(FakeStats())
+        ping.assert_not_called()
+
+    def test_success_pings_empty_suffix_with_host_count(self):
+        cb = chronos_site_status.CallbackModule()
+        cb._active = True
+        cb._start_time = time.time() - 5
+        stats = FakeStats(processed={"h1": 1, "h2": 1})
+        with mock.patch.object(cb, "_ping") as ping:
+            cb.v2_playbook_on_stats(stats)
+        ping.assert_called_once()
+        args = ping.call_args[0]
+        self.assertEqual(args[0], "")
+        self.assertIn("2 host(s) ok", args[1])
+
+    def test_failure_pings_fail_suffix_with_hostnames(self):
+        cb = chronos_site_status.CallbackModule()
+        cb._active = True
+        cb._start_time = time.time() - 5
+        stats = FakeStats(
+            processed={"h1": 1, "h2": 1, "h3": 1},
+            failures={"h1": 1},
+            dark={"h3": 1},
+        )
+        with mock.patch.object(cb, "_ping") as ping:
+            cb.v2_playbook_on_stats(stats)
+        args = ping.call_args[0]
+        self.assertEqual(args[0], "/fail")
+        self.assertIn("h1", args[1])
+        self.assertIn("h3", args[1])
 
 
 if __name__ == "__main__":

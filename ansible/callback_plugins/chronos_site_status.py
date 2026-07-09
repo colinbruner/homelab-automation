@@ -49,6 +49,18 @@ class CallbackModule(CallbackBase):
         self._run_id = f"{int(self._start_time)}-{os.getpid()}"
         self._ping("/start")
 
+    def v2_playbook_on_stats(self, stats):
+        if not self._active:
+            return
+
+        elapsed = int(time.time() - self._start_time)
+        failed = sorted(set(stats.failures) | set(stats.dark))
+        if not failed:
+            ok_hosts = len(stats.processed)
+            self._ping("", f"{elapsed}s, {ok_hosts} host(s) ok")
+        else:
+            self._ping("/fail", f"{elapsed}s, failed/unreachable: {', '.join(failed)}")
+
     def _ping(self, suffix, msg=None):
         try:
             params = {"rid": self._run_id}
