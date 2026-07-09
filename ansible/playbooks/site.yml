@@ -9,4 +9,3 @@
 
 - name: Import pxe server configuration
   ansible.builtin.import_playbook: pxe.yml
-
