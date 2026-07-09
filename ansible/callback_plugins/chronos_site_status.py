@@ -50,4 +50,11 @@ class CallbackModule(CallbackBase):
         self._ping("/start")
 
     def _ping(self, suffix, msg=None):
-        pass
+        params = {"rid": self._run_id}
+        if msg:
+            params["msg"] = msg[:MAX_MSG_LEN]
+        url = f"{self._base}/{self._token}{suffix}?{urllib.parse.urlencode(params)}"
+        try:
+            urllib.request.urlopen(url, timeout=10)
+        except Exception:
+            pass
