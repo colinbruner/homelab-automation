@@ -63,16 +63,23 @@ class ChronosSiteStatusPingTests(unittest.TestCase):
         cb = self._make_cb()
         with mock.patch.object(chronos_site_status.urllib.request, "urlopen") as urlopen:
             cb._ping("/start")
-        called_url = urlopen.call_args[0][0]
+        called_url = urlopen.call_args[0][0].full_url
         self.assertTrue(called_url.startswith("http://example.test/ping/tok123/start?"))
         self.assertIn("rid=111-222", called_url)
         self.assertNotIn("msg=", called_url)
+
+    def test_ping_sets_user_agent_to_avoid_cloudflare_bot_block(self):
+        cb = self._make_cb()
+        with mock.patch.object(chronos_site_status.urllib.request, "urlopen") as urlopen:
+            cb._ping("/start")
+        request = urlopen.call_args[0][0]
+        self.assertEqual(request.get_header("User-agent"), chronos_site_status.USER_AGENT)
 
     def test_ping_includes_msg_when_given(self):
         cb = self._make_cb()
         with mock.patch.object(chronos_site_status.urllib.request, "urlopen") as urlopen:
             cb._ping("", "5s, 2 host(s) ok")
-        called_url = urlopen.call_args[0][0]
+        called_url = urlopen.call_args[0][0].full_url
         self.assertIn("msg=", called_url)
 
     def test_ping_truncates_long_message(self):
@@ -80,7 +87,7 @@ class ChronosSiteStatusPingTests(unittest.TestCase):
         long_msg = "x" * 500
         with mock.patch.object(chronos_site_status.urllib.request, "urlopen") as urlopen:
             cb._ping("", long_msg)
-        called_url = urlopen.call_args[0][0]
+        called_url = urlopen.call_args[0][0].full_url
         query = called_url.split("?", 1)[1]
         params = urllib.parse.parse_qs(query)
         self.assertEqual(len(params["msg"][0]), chronos_site_status.MAX_MSG_LEN)

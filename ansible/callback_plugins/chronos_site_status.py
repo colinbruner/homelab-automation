@@ -19,6 +19,7 @@ description:
 """
 
 MAX_MSG_LEN = 300
+USER_AGENT = "chronos-site-status/1.0"
 
 
 class CallbackModule(CallbackBase):
@@ -67,7 +68,10 @@ class CallbackModule(CallbackBase):
             if msg:
                 params["msg"] = msg[:MAX_MSG_LEN]
             url = f"{self._base}/{self._token}{suffix}?{urllib.parse.urlencode(params)}"
-            urllib.request.urlopen(url, timeout=10)
+            # Cloudflare's bot protection in front of chronos.bruner.family blocks
+            # urllib's default "Python-urllib/x.y" User-Agent with a 403 (error 1010).
+            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            urllib.request.urlopen(request, timeout=10)
         except Exception as exc:
             # Never fail the play over a Chronos outage — but leave a visible
             # breadcrumb (token redacted) instead of failing completely silently.
