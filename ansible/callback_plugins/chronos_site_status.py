@@ -68,5 +68,7 @@ class CallbackModule(CallbackBase):
                 params["msg"] = msg[:MAX_MSG_LEN]
             url = f"{self._base}/{self._token}{suffix}?{urllib.parse.urlencode(params)}"
             urllib.request.urlopen(url, timeout=10)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Never fail the play over a Chronos outage — but leave a visible
+            # breadcrumb (token redacted) instead of failing completely silently.
+            self._display.warning(f"chronos_site_status: ping to {self._base}/<token>{suffix} failed: {exc}")

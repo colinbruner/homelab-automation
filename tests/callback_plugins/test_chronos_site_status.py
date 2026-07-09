@@ -92,6 +92,25 @@ class ChronosSiteStatusPingTests(unittest.TestCase):
         ):
             cb._ping("/fail", "some error")  # must not raise
 
+    def test_ping_warns_on_error_without_leaking_token(self):
+        cb = self._make_cb()
+        with mock.patch.object(
+            chronos_site_status.urllib.request, "urlopen", side_effect=OSError("boom")
+        ), mock.patch.object(cb, "_display") as display:
+            cb._ping("/start")
+        display.warning.assert_called_once()
+        warning_msg = display.warning.call_args[0][0]
+        self.assertIn("boom", warning_msg)
+        self.assertNotIn(cb._token, warning_msg)
+
+    def test_ping_does_not_warn_on_success(self):
+        cb = self._make_cb()
+        with mock.patch.object(chronos_site_status.urllib.request, "urlopen"), mock.patch.object(
+            cb, "_display"
+        ) as display:
+            cb._ping("/start")
+        display.warning.assert_not_called()
+
 
 class FakeStats:
     def __init__(self, processed=None, failures=None, dark=None):
