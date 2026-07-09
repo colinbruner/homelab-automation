@@ -85,7 +85,15 @@ Configure the following inside the Semaphore UI once it is running:
 
 3. **Environment** — an environment exposing the two 1Password Connect
    variables (`OP_CONNECT_HOST`, `OP_CONNECT_TOKEN`) to task runs, matching the
-   values injected into the pod.
+   values injected into the pod. The **`site`** task template additionally
+   needs `CHRONOS_BASE_URL` (`https://chronos.bruner.family/ping`) and
+   `CHRONOS_SITE_TOKEN` (from a `chronos-site-converge` 1Password item, field
+   `token`, vault `lab` — same pattern as the per-host
+   `chronos-ns1-dns-backup`/`chronos-ns2-dns-backup` items) so the
+   `chronos_site_status` callback plugin (`ansible/callback_plugins/`) can
+   report the scheduled converge run's start/success/failure. Other task
+   templates don't need these vars — the plugin only activates for
+   `site.yml`.
 
 4. **Task templates** — one template per playbook:
 
