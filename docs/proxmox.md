@@ -56,9 +56,9 @@ Runs the `proxmox` role across all nodes (serial: 1). Currently covers ACME cert
 | `op://lab/cloudflare-proxmox/acme-token` | `cloudflare_token` | Cloudflare API token for DNS-01 |
 | `op://lab/cloudflare-proxmox/account-id` | `cloudflare_account_id` | Cloudflare account ID |
 | `op://lab/cloudflare-proxmox/acme-email` | `acme_contact` | Let's Encrypt contact email |
-| `op://lab/pocket-id-proxmox/issuer-url` | `oidc_issuer_url` | Pocket ID base URL |
-| `op://lab/pocket-id-proxmox/client-id` | `oidc_client_id` | OIDC client ID |
-| `op://lab/pocket-id-proxmox/client-secret` | `oidc_client_secret` | OIDC client secret |
+| `op://semaphore/pocket-id-proxmox/issuer-url` | `oidc_issuer_url` | Pocket ID base URL |
+| `op://semaphore/pocket-id-proxmox/client-id` | `oidc_client_id` | OIDC client ID |
+| `op://semaphore/pocket-id-proxmox/client-secret` | `oidc_client_secret` | OIDC client secret |
 
 ### ACME / Let's Encrypt (`acme.yml`)
 
