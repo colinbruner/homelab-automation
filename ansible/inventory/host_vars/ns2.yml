@@ -5,4 +5,4 @@
 technitium_cert_domain: "ns2.colinbruner.com"
 
 # Chronos ping token for the nightly DNS backup job (this host's job only).
-technitium_backup_chronos_token: "{{ lookup('community.general.onepassword', 'chronos-ns2-dns-backup', field='token', vault='lab') }}"
+technitium_backup_chronos_token: "{{ lookup('community.general.onepassword', 'chronos-ns2-dns-backup', field='token', vault='semaphore') }}"
